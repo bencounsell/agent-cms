@@ -39,7 +39,7 @@
   "files": [
     "bin",
     "dist",
-    "templates",
+    "schemas",
     "docs",
     "README.md"
   ],
@@ -53,6 +53,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "check": "pnpm lint && pnpm typecheck && pnpm test",
+    "schema": "node -e \"import('./src/core/config/schema.ts').then(async m=>{const {z}=await import('zod');const s=z.toJSONSchema(m.CmsConfigSchema,{io:'input'});s.$schema='https://json-schema.org/draft/2020-12/schema';s.title='agentcms configuration';require('fs').writeFileSync('schemas/config.schema.json',JSON.stringify(s,null,2)+'\\n')})\"",
     "prepublishOnly": "pnpm check && pnpm build"
   },
   "dependencies": {

@@ -64,8 +64,10 @@ export interface Section {
   wordCount: number;
 }
 
-const FAQ_RE = /\b(faq|faqs|frequently asked questions|common questions|questions and answers|q&a)\b/i;
-const TAKEAWAYS_RE = /\b(key takeaways|takeaways|tl;?dr|summary|in short|at a glance|quick answer)\b/i;
+const FAQ_RE =
+  /\b(faq|faqs|frequently asked questions|common questions|questions and answers|q&a)\b/i;
+const TAKEAWAYS_RE =
+  /\b(key takeaways|takeaways|tl;?dr|summary|in short|at a glance|quick answer)\b/i;
 const CONCLUSION_RE = /\b(conclusion|wrapping up|final thoughts|next steps|summary)\b/i;
 
 const parser = unified().use(remarkParse).use(remarkGfm);
@@ -84,7 +86,11 @@ export function nodeText(node: MdNode): string {
   return node.children.map(nodeText).join(sep);
 }
 
-export function walk(node: MdNode, visit: (n: MdNode, parents: MdNode[]) => void, parents: MdNode[] = []): void {
+export function walk(
+  node: MdNode,
+  visit: (n: MdNode, parents: MdNode[]) => void,
+  parents: MdNode[] = [],
+): void {
   visit(node, parents);
   if (node.children) for (const c of node.children) walk(c, visit, [...parents, node]);
 }
@@ -157,7 +163,11 @@ export function analyzeMarkdown(body: string, opts: { siteUrl?: string } = {}): 
 
   walk(tree, (n) => {
     if (n.type === "link" && n.url) {
-      links.push({ url: n.url, text: normalizeWhitespace(nodeText(n)), internal: isInternalLink(n.url, opts.siteUrl) });
+      links.push({
+        url: n.url,
+        text: normalizeWhitespace(nodeText(n)),
+        internal: isInternalLink(n.url, opts.siteUrl),
+      });
     }
     if (n.type === "image" && n.url) images.push({ url: n.url, alt: (n.alt ?? "").trim() });
   });
@@ -225,5 +235,7 @@ export interface TocItem {
 }
 
 export function tableOfContents(headings: Heading[], maxDepth = 3): TocItem[] {
-  return headings.filter((h) => h.depth <= maxDepth).map(({ depth, text, id }) => ({ depth, text, id }));
+  return headings
+    .filter((h) => h.depth <= maxDepth)
+    .map(({ depth, text, id }) => ({ depth, text, id }));
 }

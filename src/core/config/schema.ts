@@ -143,7 +143,9 @@ export const ResearchConfigSchema = z.object({
     .default([]),
   maxPagesPerSite: z.number().int().min(1).max(500).default(40),
   requestDelayMs: z.number().int().min(0).max(10000).default(600),
-  userAgent: z.string().default("agentcms-research/0.1 (+https://github.com/bencounsell/agent-cms)"),
+  userAgent: z
+    .string()
+    .default("agentcms-research/0.1 (+https://github.com/bencounsell/agent-cms)"),
   refreshAfterDays: z.number().int().min(1).default(7),
   /** Only analyse competitor URLs whose path matches one of these prefixes (e.g. "/blog"). */
   pathPrefixes: z.array(z.string()).default([]),
@@ -162,6 +164,8 @@ export const SeoConfigSchema = z.object({
 
 export const BuildConfigSchema = z.object({
   outDir: z.string().default("public/cms"),
+  /** URL path where outDir is served from, used for absolute links inside llms.txt and feeds. */
+  publicPath: z.string().default("/cms"),
   feeds: z.boolean().default(true),
   feedLimit: z.number().int().min(1).default(20),
   sitemap: z.boolean().default(true),
@@ -227,7 +231,8 @@ export function defaultConfig(input: {
   description?: string;
 }): CmsConfig {
   return CmsConfigSchema.parse({
-    $schema: "https://raw.githubusercontent.com/bencounsell/agent-cms/main/schemas/config.schema.json",
+    $schema:
+      "https://raw.githubusercontent.com/bencounsell/agent-cms/main/schemas/config.schema.json",
     site: {
       name: input.name,
       url: input.url ?? "https://example.com",
@@ -236,3 +241,10 @@ export function defaultConfig(input: {
     collections: defaultCollections(),
   });
 }
+
+export type AiConfig = z.infer<typeof AiConfigSchema>;
+export type SeoConfig = z.infer<typeof SeoConfigSchema>;
+export type BuildConfig = z.infer<typeof BuildConfigSchema>;
+export type ResearchConfig = z.infer<typeof ResearchConfigSchema>;
+export type TaxonomyConfig = z.infer<typeof TaxonomyConfigSchema>;
+export type SiteConfig = z.infer<typeof SiteConfigSchema>;

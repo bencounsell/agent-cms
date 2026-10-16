@@ -35,7 +35,7 @@ export function readingTimeMinutes(wordCount: number, wpm = 230): number {
 
 export function splitSentences(text: string): string[] {
   return normalizeWhitespace(text)
-    .split(/(?<=[.!?])\s+(?=[A-Z0-9"'(\[])/)
+    .split(/(?<=[.!?])\s+(?=[A-Z0-9"'([])/)
     .map((s) => s.trim())
     .filter((s) => s.length > 0);
 }
@@ -54,7 +54,10 @@ export function clamp(n: number, min: number, max: number): number {
 
 export function isQuestion(text: string): boolean {
   const t = text.trim();
-  return /\?$/.test(t) || /^(how|what|why|when|where|which|who|can|should|does|do|is|are|will)\b/i.test(t);
+  return (
+    /\?$/.test(t) ||
+    /^(how|what|why|when|where|which|who|can|should|does|do|is|are|will)\b/i.test(t)
+  );
 }
 
 export function pluralize(n: number, singular: string, plural = `${singular}s`): string {

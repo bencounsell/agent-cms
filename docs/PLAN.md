@@ -332,14 +332,23 @@ manifest.json                          # build info and content hashes
 | # | Phase | Deliverable | Status |
 | --- | --- | --- | --- |
 | 0 | Plan and scaffolding | this document, package, tsconfig, lint, test runner | done |
-| 1 | Core | config, content store, markdown, deterministic metadata, validation | |
-| 2 | CLI + MCP (stdio) | commands, tools, resources, prompts, instructions, `init`, install docs | |
-| 3 | Analysis + insights | SEO/AEO/readability audits, briefing, suggestions, improve plan | |
-| 4 | AI providers | Anthropic, sampling, delegate; AI enrichment | |
-| 5 | Research | competitor discovery, extraction, snapshots, comparison | |
-| 6 | Build | static outputs | |
-| 7 | HTTP API | Hono + OpenAPI + MCP over HTTP + auth | |
-| 8 | Docs and polish | README, guides, example project, release config | |
+| 1 | Core | config, content store, markdown, deterministic metadata, validation | done |
+| 2 | CLI + MCP (stdio) | commands, tools, resources, prompts, instructions, `init`, install docs | done |
+| 3 | Analysis + insights | SEO/AEO/readability audits, briefing, suggestions, improve plan | done |
+| 4 | AI providers | Anthropic, sampling, delegate; AI enrichment | done (Anthropic path exercised against the SDK types only; needs a live key to verify end to end) |
+| 5 | Research | competitor discovery, extraction, snapshots, comparison | done (tested with mocked HTTP) |
+| 6 | Build | static outputs | done |
+| 7 | HTTP API | Hono + OpenAPI + MCP over HTTP + auth | done |
+| 8 | Docs and polish | README, guides, release config | done; example project and npm publish are follow-ups |
+
+## 9. Follow-ups
+
+- Publish to npm as `agentcms` and point `$schema` URLs at the released schema.
+- Example site under `examples/` that consumes `public/cms/` with Astro.
+- Web search for SERP checks (Anthropic `web_search` server tool) when the Anthropic provider is active.
+- Elicitation (MCP) for publish/delete confirmations on clients that support it.
+- Multi-language content (per-entry `language` is stored; audits and keyword extraction are English-first).
+- Optional web-based read-only preview of the JSON output (explicitly out of scope today).
 
 ---
 

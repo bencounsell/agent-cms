@@ -1,4 +1,5 @@
-const EN = `a about above after again against all almost also although always am among an and another any
+const EN =
+  `a about above after again against all almost also although always am among an and another any
 are around as at back be became because become becomes been before being below between both but by
 can cannot could did do does doing done down during each either else enough etc even ever every few
 for from further get gets got had has have having he her here hers herself him himself his how however
@@ -11,8 +12,8 @@ us use used using very via was way we well were what whatever when whenever wher
 who whoever whom whose why will with within without would yes yet you your yours yourself yourselves
 re ve ll s t d m don doesn didn isn aren wasn weren won wouldn couldn shouldn here's it's that's there's
 things thing lot lots way ways really actually basically simply just also already another whole`
-  .split(/\s+/)
-  .filter(Boolean);
+    .split(/\s+/)
+    .filter(Boolean);
 
 export const STOPWORDS: ReadonlySet<string> = new Set(EN);
 

@@ -152,9 +152,10 @@ export class ContentStore {
     const nextFm = EntryFrontmatterSchema.parse({
       ...existing.frontmatter,
       ...stripUndefined(fields),
-      id: existing.frontmatter.id,
+      id: existing.frontmatter.id.startsWith("file:") ? randomUUID() : existing.frontmatter.id,
       slug: fields.slug ? slugify(fields.slug) : existing.slug,
-      updatedAt: opts.touch === false ? existing.frontmatter.updatedAt : nowIso(),
+      updatedAt:
+        opts.touch === false ? (fields.updatedAt ?? existing.frontmatter.updatedAt) : nowIso(),
     });
     if (nextFm.status === "published" && !nextFm.publishedAt) nextFm.publishedAt = nowIso();
     const nextBody = body ?? existing.body;
@@ -181,6 +182,7 @@ export class ContentStore {
   async save(entry: Entry): Promise<Entry> {
     const collection = this.collection(entry.collection);
     const fm = EntryFrontmatterSchema.parse(entry.frontmatter);
+    if (fm.id.startsWith("file:")) fm.id = randomUUID();
     await writeText(entry.file, stringifyFrontmatter(fm, entry.body));
     return this.readFile(collection, entry.file);
   }
@@ -214,7 +216,25 @@ export class ContentStore {
           });
           continue;
         }
-        const result = EntryFrontmatterSchema.safeParse(parsed.data);
+        const base = path
+          .basename(file)
+          .replace(/\.mdx?$/, "")
+          .replace(/^\d{4}-\d{2}-\d{2}-/, "");
+        if (parsed.data.id === undefined) {
+          issues.push({
+            collection: collection.name,
+            file: rel,
+            severity: "warning",
+            path: "id",
+            message: "No id in frontmatter; one will be assigned on the next save through the CMS",
+          });
+        }
+        const result = EntryFrontmatterSchema.safeParse({
+          id: parsed.data.id ?? `file:${collection.name}/${base}`,
+          slug: parsed.data.slug ?? base,
+          title: parsed.data.title ?? base,
+          ...parsed.data,
+        });
         if (!result.success) {
           for (const issue of result.error.issues) {
             issues.push({
@@ -261,7 +281,11 @@ export class ContentStore {
               message: `Required field "${field.name}" is missing`,
             });
           }
-          if (field.type === "enum" && value !== undefined && !field.values?.includes(String(value))) {
+          if (
+            field.type === "enum" &&
+            value !== undefined &&
+            !field.values?.includes(String(value))
+          ) {
             issues.push({
               collection: collection.name,
               file: rel,
@@ -330,7 +354,7 @@ export class ContentStore {
       file,
       relativePath: path.relative(this.root, file),
       frontmatter: fm,
-      body,
+      body: body.replace(/\n$/, ""),
       path: p,
       url: absoluteUrl(this.config.site.url, p),
     };

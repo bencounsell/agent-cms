@@ -1,7 +1,7 @@
 import path from "node:path";
 import { CmsError } from "../util/errors.ts";
 import { exists, readJsonIfExists, writeJson } from "../util/fs.ts";
-import { CONFIG_FILENAME, type CmsConfig, CmsConfigSchema } from "./schema.ts";
+import { type CmsConfig, CmsConfigSchema, CONFIG_FILENAME } from "./schema.ts";
 
 /** Walk up from `cwd` until a config file is found. Returns the directory containing it. */
 export async function findProjectRoot(cwd: string = process.cwd()): Promise<string | undefined> {

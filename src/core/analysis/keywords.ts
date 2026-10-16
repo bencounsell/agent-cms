@@ -16,10 +16,7 @@ export interface CorpusDoc {
 const TOKEN_RE = /[a-z0-9][a-z0-9'’+#.-]*[a-z0-9+#]|[a-z0-9]/g;
 
 function normalize(text: string): string {
-  return text
-    .toLowerCase()
-    .normalize("NFKD")
-    .replace(/[̀-ͯ]/g, "");
+  return text.toLowerCase().normalize("NFKD").replace(/[̀-ͯ]/g, "");
 }
 
 export function tokenize(text: string): string[] {
@@ -29,7 +26,7 @@ export function tokenize(text: string): string[] {
 /** Split text into segments at sentence and clause boundaries so phrases never span them. */
 function segments(text: string): string[][] {
   return normalize(text)
-    .split(/[.!?;:()\[\]{}"“”\n|•·]+|\s[-–—]\s|,\s/)
+    .split(/[.!?;:()[\]{}"“”\n|•·]+|\s[-–—]\s|,\s/)
     .map((s) => s.match(TOKEN_RE) ?? [])
     .map((toks) => toks.map((t) => t.replace(/^['’]+|['’.]+$/g, "")))
     .filter((toks) => toks.length > 0);

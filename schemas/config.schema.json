@@ -1,0 +1,493 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "$schema": {
+      "type": "string"
+    },
+    "version": {
+      "default": 1,
+      "type": "number",
+      "const": 1
+    },
+    "site": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "url": {
+          "default": "https://example.com",
+          "type": "string",
+          "format": "uri"
+        },
+        "description": {
+          "default": "",
+          "type": "string"
+        },
+        "language": {
+          "default": "en",
+          "type": "string"
+        },
+        "audience": {
+          "type": "string"
+        },
+        "topics": {
+          "default": [],
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "tone": {
+          "type": "string"
+        },
+        "organization": {
+          "type": "object",
+          "properties": {
+            "name": {
+              "type": "string"
+            },
+            "url": {
+              "type": "string",
+              "format": "uri"
+            },
+            "logo": {
+              "type": "string"
+            }
+          }
+        },
+        "defaultAuthor": {
+          "type": "string"
+        },
+        "social": {
+          "default": {},
+          "type": "object",
+          "properties": {
+            "twitter": {
+              "type": "string"
+            },
+            "profiles": {
+              "default": [],
+              "type": "array",
+              "items": {
+                "type": "string",
+                "format": "uri"
+              }
+            }
+          }
+        }
+      },
+      "required": [
+        "name"
+      ]
+    },
+    "collections": {
+      "minItems": 1,
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9-]*$"
+          },
+          "label": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "kind": {
+            "default": "custom",
+            "type": "string",
+            "enum": [
+              "post",
+              "page",
+              "doc",
+              "author",
+              "custom"
+            ]
+          },
+          "path": {
+            "type": "string"
+          },
+          "urlPattern": {
+            "default": "/{slug}",
+            "type": "string"
+          },
+          "filePattern": {
+            "default": "{slug}",
+            "type": "string",
+            "enum": [
+              "{slug}",
+              "{date}-{slug}"
+            ]
+          },
+          "fields": {
+            "default": [],
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "name": {
+                  "type": "string",
+                  "pattern": "^[a-zA-Z][a-zA-Z0-9_]*$"
+                },
+                "type": {
+                  "type": "string",
+                  "enum": [
+                    "string",
+                    "text",
+                    "number",
+                    "boolean",
+                    "date",
+                    "list",
+                    "enum",
+                    "reference",
+                    "object"
+                  ]
+                },
+                "required": {
+                  "default": false,
+                  "type": "boolean"
+                },
+                "description": {
+                  "type": "string"
+                },
+                "values": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "collection": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "name",
+                "type"
+              ]
+            }
+          },
+          "metadata": {
+            "default": {},
+            "type": "object",
+            "properties": {
+              "auto": {
+                "default": [
+                  "description",
+                  "excerpt",
+                  "category",
+                  "tags",
+                  "keywords",
+                  "social",
+                  "aeo",
+                  "schema",
+                  "related",
+                  "readingTime"
+                ],
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "enum": [
+                    "description",
+                    "excerpt",
+                    "category",
+                    "tags",
+                    "keywords",
+                    "social",
+                    "aeo",
+                    "schema",
+                    "related",
+                    "readingTime"
+                  ]
+                }
+              },
+              "maxTags": {
+                "default": 8,
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 30
+              },
+              "maxKeywords": {
+                "default": 10,
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 30
+              }
+            }
+          },
+          "listable": {
+            "default": true,
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "name",
+          "path"
+        ]
+      }
+    },
+    "taxonomy": {
+      "default": {},
+      "type": "object",
+      "properties": {
+        "categories": {
+          "default": [],
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "type": "string"
+              },
+              "description": {
+                "type": "string"
+              },
+              "keywords": {
+                "default": [],
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
+            },
+            "required": [
+              "name"
+            ]
+          }
+        },
+        "categoryPolicy": {
+          "default": "open",
+          "type": "string",
+          "enum": [
+            "open",
+            "closed"
+          ]
+        },
+        "tagPolicy": {
+          "default": "open",
+          "type": "string",
+          "enum": [
+            "open",
+            "closed"
+          ]
+        },
+        "allowedTags": {
+          "default": [],
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "ai": {
+      "default": {},
+      "type": "object",
+      "properties": {
+        "provider": {
+          "default": "auto",
+          "type": "string",
+          "enum": [
+            "auto",
+            "anthropic",
+            "sampling",
+            "delegate",
+            "deterministic"
+          ]
+        },
+        "model": {
+          "default": "claude-opus-5-5",
+          "type": "string"
+        },
+        "effort": {
+          "default": "medium",
+          "type": "string",
+          "enum": [
+            "low",
+            "medium",
+            "high"
+          ]
+        },
+        "maxTokens": {
+          "default": 8000,
+          "type": "integer",
+          "minimum": 256,
+          "maximum": 64000
+        }
+      }
+    },
+    "research": {
+      "default": {},
+      "type": "object",
+      "properties": {
+        "competitors": {
+          "default": [],
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "url": {
+                "type": "string",
+                "format": "uri"
+              },
+              "name": {
+                "type": "string"
+              },
+              "notes": {
+                "type": "string"
+              },
+              "addedAt": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "url"
+            ]
+          }
+        },
+        "maxPagesPerSite": {
+          "default": 40,
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 500
+        },
+        "requestDelayMs": {
+          "default": 600,
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 10000
+        },
+        "userAgent": {
+          "default": "agentcms-research/0.1 (+https://github.com/bencounsell/agent-cms)",
+          "type": "string"
+        },
+        "refreshAfterDays": {
+          "default": 7,
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 9007199254740991
+        },
+        "pathPrefixes": {
+          "default": [],
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "seo": {
+      "default": {},
+      "type": "object",
+      "properties": {
+        "targetWordCount": {
+          "default": 1200,
+          "type": "integer",
+          "minimum": 100,
+          "maximum": 9007199254740991
+        },
+        "titleLength": {
+          "default": {},
+          "type": "object",
+          "properties": {
+            "min": {
+              "default": 30,
+              "type": "number"
+            },
+            "max": {
+              "default": 60,
+              "type": "number"
+            }
+          }
+        },
+        "descriptionLength": {
+          "default": {},
+          "type": "object",
+          "properties": {
+            "min": {
+              "default": 70,
+              "type": "number"
+            },
+            "max": {
+              "default": 160,
+              "type": "number"
+            }
+          }
+        },
+        "staleAfterDays": {
+          "default": 180,
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 9007199254740991
+        },
+        "minInternalLinks": {
+          "default": 2,
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "minAuditScoreToPublish": {
+          "default": 60,
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 100
+        }
+      }
+    },
+    "build": {
+      "default": {},
+      "type": "object",
+      "properties": {
+        "outDir": {
+          "default": "public/cms",
+          "type": "string"
+        },
+        "publicPath": {
+          "default": "/cms",
+          "type": "string"
+        },
+        "feeds": {
+          "default": true,
+          "type": "boolean"
+        },
+        "feedLimit": {
+          "default": 20,
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 9007199254740991
+        },
+        "sitemap": {
+          "default": true,
+          "type": "boolean"
+        },
+        "llmsTxt": {
+          "default": true,
+          "type": "boolean"
+        },
+        "searchIndex": {
+          "default": true,
+          "type": "boolean"
+        },
+        "robots": {
+          "default": true,
+          "type": "boolean"
+        },
+        "includeDrafts": {
+          "default": false,
+          "type": "boolean"
+        }
+      }
+    }
+  },
+  "required": [
+    "site",
+    "collections"
+  ],
+  "title": "agentcms configuration",
+  "description": "Schema for agentcms.config.json"
+}

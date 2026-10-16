@@ -15,7 +15,9 @@ export function setLogLevel(level: LogLevel): void {
 function emit(level: Exclude<LogLevel, "silent">, args: unknown[]): void {
   if (order[level] < order[current]) return;
   const line = args
-    .map((a) => (typeof a === "string" ? a : a instanceof Error ? a.stack ?? a.message : JSON.stringify(a)))
+    .map((a) =>
+      typeof a === "string" ? a : a instanceof Error ? (a.stack ?? a.message) : JSON.stringify(a),
+    )
     .join(" ");
   process.stderr.write(`[agentcms:${level}] ${line}\n`);
 }
