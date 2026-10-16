@@ -69,12 +69,27 @@ export class ThemeStore {
   }
 
   async defaults(): Promise<ThemeTokens> {
-    const raw = await readJsonIfExists(path.join(BUNDLED_THEME_DIR, THEME_FILENAME));
+    const file = path.join(BUNDLED_THEME_DIR, THEME_FILENAME);
+    const raw = await readJsonIfExists(file);
+    if (raw === undefined) {
+      throw new CmsError(
+        "CONFIG",
+        `The bundled default theme is missing (expected ${file}). The agentcms install is incomplete: reinstall it (npm install -g agentcms, or rebuild from the repository and install the packed tarball).`,
+      );
+    }
     return raw as ThemeTokens;
   }
 
   async project(): Promise<ThemeTokensInput | undefined> {
-    const raw = await readJsonIfExists(this.file);
+    let raw: unknown;
+    try {
+      raw = await readJsonIfExists(this.file);
+    } catch (err) {
+      throw new CmsError(
+        "VALIDATION",
+        `${THEME_FILENAME} is not valid JSON (${(err as Error).message}). Fix it or run \`agentcms theme reset\`.`,
+      );
+    }
     if (raw === undefined) return undefined;
     const parsed = ThemeTokensSchema.safeParse(raw);
     if (!parsed.success)
@@ -98,8 +113,10 @@ export class ThemeStore {
     return this.resolve();
   }
 
+  /** Overwrite the project theme with the bundled default (also repairs a corrupt theme.json). */
   async reset(): Promise<ThemeTokens> {
-    await writeJson(this.file, await this.defaults());
+    const defaults = await this.defaults();
+    await writeJson(this.file, defaults);
     return this.resolve();
   }
 }

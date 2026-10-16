@@ -53,7 +53,9 @@ export async function writeBuffer(p: string, content: Buffer): Promise<void> {
 }
 
 export async function writeJson(p: string, value: unknown): Promise<void> {
-  await writeText(p, `${JSON.stringify(value, null, 2)}\n`);
+  const text = JSON.stringify(value, null, 2);
+  if (text === undefined) throw new Error(`Refusing to write ${p}: value is not JSON-serialisable`);
+  await writeText(p, `${text}\n`);
 }
 
 export async function remove(p: string): Promise<void> {

@@ -341,6 +341,14 @@ describe("template store", () => {
     ).toContain("@media (prefers-color-scheme:dark){:root{--color-accent-text:#fff}}");
   });
 
+  it("repairs a corrupt theme.json on reset and explains it otherwise", async () => {
+    const { writeFile } = await import("node:fs/promises");
+    await writeFile(path.join(project.root, "theme.json"), "undefined\n");
+    await expect(cms.theme.resolve()).rejects.toThrow(/theme reset/);
+    await cms.theme.reset();
+    expect((await cms.theme.resolve()).colors.accent).toBe("#2457d6");
+  });
+
   it("theme store merges project tokens over defaults", async () => {
     const t = await cms.theme.update({ colors: { accent: "#ff0066" }, features: { toc: false } });
     expect(t.colors.accent).toBe("#ff0066");

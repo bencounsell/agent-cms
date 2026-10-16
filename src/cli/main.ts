@@ -12,6 +12,7 @@ import {
   StatusSchema,
 } from "../core/content/schema.ts";
 import { serializeEntry, summarizeEntry } from "../core/serialize.ts";
+import { BUNDLED_THEME_DIR } from "../core/templates/paths.ts";
 import { TemplateStore } from "../core/templates/store.ts";
 import { THEME_FILENAME } from "../core/templates/theme.ts";
 import { CmsError } from "../core/util/errors.ts";
@@ -1122,6 +1123,13 @@ program
         cms.ai.mode === "provider"
           ? `${cms.ai.provider.name} (${cms.ai.provider.model})`
           : `${cms.ai.mode} – ${cms.ai.reason}`;
+      const bundledTheme = await exists(path.join(BUNDLED_THEME_DIR, THEME_FILENAME));
+      let themeStatus = "ok";
+      try {
+        await cms.theme.resolve();
+      } catch (err) {
+        themeStatus = (err as Error).message;
+      }
       const report = {
         root: cms.root,
         node: process.version,
@@ -1132,10 +1140,12 @@ program
         ai,
         competitors: competitors.length,
         outDir: cms.config.build.outDir,
+        bundledTheme: bundledTheme ? BUNDLED_THEME_DIR : "missing",
+        theme: themeStatus,
       };
       out(report, () => {
         process.stdout.write(
-          `${pc.green("✔")} project: ${cms.root}\n${pc.green("✔")} node ${process.version}\n${pc.green("✔")} collections: ${report.collections.join(", ")} (${entries.length} entries)\n${report.validationErrors ? pc.red(`✖ ${report.validationErrors} validation errors (run agentcms validate)`) : pc.green("✔ content valid")}\n${cms.ai.mode === "provider" ? pc.green(`✔ AI: ${ai}`) : pc.yellow(`! AI: ${ai}`)}\n${competitors.length ? pc.green(`✔ ${competitors.length} competitor(s) tracked`) : pc.yellow("! no competitors tracked (agentcms research add <url>)")}\n`,
+          `${pc.green("✔")} project: ${cms.root}\n${pc.green("✔")} node ${process.version}\n${pc.green("✔")} collections: ${report.collections.join(", ")} (${entries.length} entries)\n${report.validationErrors ? pc.red(`✖ ${report.validationErrors} validation errors (run agentcms validate)`) : pc.green("✔ content valid")}\n${cms.ai.mode === "provider" ? pc.green(`✔ AI: ${ai}`) : pc.yellow(`! AI: ${ai}`)}\n${competitors.length ? pc.green(`✔ ${competitors.length} competitor(s) tracked`) : pc.yellow("! no competitors tracked (agentcms research add <url>)")}\n${bundledTheme ? pc.green(`✔ bundled theme: ${BUNDLED_THEME_DIR}`) : pc.red(`✖ bundled theme missing at ${BUNDLED_THEME_DIR} (reinstall agentcms)`)}\n${themeStatus === "ok" ? pc.green("✔ theme.json valid") : pc.red(`✖ theme: ${themeStatus}`)}\n`,
         );
         if (cms.ai.mode !== "provider")
           process.stdout.write(

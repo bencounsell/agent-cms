@@ -345,7 +345,14 @@ export class TemplateStore {
   /** Copy the whole bundled theme into the project (used by init). Existing files are kept. */
   async eject(): Promise<string[]> {
     const written: string[] = [];
-    for (const rel of await this.walk(BUNDLED_THEME_DIR)) {
+    const bundled = await this.walk(BUNDLED_THEME_DIR);
+    if (bundled.length === 0) {
+      throw new CmsError(
+        "CONFIG",
+        `The bundled default theme is missing (expected under ${BUNDLED_THEME_DIR}). Reinstall agentcms.`,
+      );
+    }
+    for (const rel of bundled) {
       const target = path.join(this.dir, rel);
       if (await exists(target)) continue;
       const { readFile, mkdir, copyFile } = await import("node:fs/promises");
