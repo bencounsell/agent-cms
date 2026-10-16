@@ -360,3 +360,122 @@ manifest.json                          # build info and content hashes
 - No network in tests (fetch is mocked).
 - The tool descriptions are the product: every tool explains when to use it, what it returns and
   what to do next.
+
+---
+
+## 10. Phase 9: managed templates and page rendering
+
+Decision: agentcms renders the site itself. Templates are files the CMS manages the same way it
+manages content: readable, editable, validated, previewed and audited through the agent surface,
+with a default theme so a fresh project renders a complete site on its first build. People with an
+existing site can switch page rendering off and keep consuming the JSON.
+
+### Engine
+
+LiquidJS. Safe by design (no arbitrary code in templates, so agent- and API-authored templates
+cannot read files or make requests), widely known to models from Jekyll and Shopify, supports
+layouts, includes and filters without a build step.
+
+### Project layout
+
+```
+templates/
+├── layouts/base.liquid            html shell: {{ head }}, header, footer
+├── pages/home.liquid              /
+├── pages/post.liquid              entries of kind post (also doc, custom)
+├── pages/page.liquid              entries of kind page
+├── pages/author.liquid            entries of kind author, with their posts
+├── pages/collection.liquid        collection index, paginated
+├── pages/term.liquid              one tag or category
+├── pages/taxonomy.liquid          tag and category indexes
+├── pages/404.liquid
+├── partials/*.liquid              nav, footer, post-card, pagination, answer, takeaways, faq, toc, author-card, related
+└── assets/styles.css, search.js
+theme.json                         colours, fonts, layout, nav, footer, feature flags
+```
+
+`templates/pages/<collection>.liquid` overrides the kind template for one collection. Missing files
+fall back to the bundled default theme file by file, so deleting a template is always safe.
+
+### Output layout (changed)
+
+`build.outDir` (default `dist`) is the site root. Pages render to `<path>/index.html`, assets to
+`assets/<name>.<hash>.<ext>`, and the root-level files that must live at the root (sitemap.xml,
+robots.txt, llms.txt, llms-full.txt, feeds/) go there. The JSON content API and search index move
+under `build.dataPath` (default `cms`), so a headless user who sets `outDir: public` gets
+`public/cms/...` plus a correct `public/sitemap.xml`. `build.html.enabled` (default true) controls
+page rendering. `build.publicPath` is removed.
+
+### Render context
+
+Every template receives precomputed data from the same corpus the audits use:
+`site` (config plus navigation), `theme` (tokens), `page` (kind, title, url, description),
+`entry` (frontmatter, html, text, toc, readingTime, wordCount, resolved author, related entries,
+jsonld), `entries` and `pagination` on lists, `collection`, `term`, `taxonomy`, `assets` (hashed
+asset paths), `head` (the generated head block) and `build`. Filters: `absolute_url`, `json`,
+`excerpt`, `slugify`, `markdown`, plus Liquid's own `date`, `truncatewords` and friends.
+
+The CMS generates the entire SEO head block (title, description, canonical, robots, Open Graph,
+Twitter card, article metadata, JSON-LD, feed links) and templates place it with `{{ head }}`.
+Layouts missing `{{ head }}` fail validation, so a restyle cannot remove structured data.
+
+### Managed template surface
+
+Core: `TemplateStore` (list, get with the variables available to that template kind and a sample
+context from a real entry, create, update with validation, delete, reset to the bundled default,
+diff) and `ThemeStore` (theme.json). Validation parses the Liquid, renders against a sample
+context, rejects syntax errors, warns on unknown variables and requires `{{ head }}` in layouts.
+
+MCP tools: `list_templates`, `get_template`, `update_template`, `create_template`,
+`delete_template` (confirm), `reset_template`, `get_theme`, `update_theme`, `list_routes`,
+`preview_page`, `audit_pages`. Resources: `agentcms://template/{path}`, `agentcms://theme`,
+`agentcms://preview/{collection}/{slug}`. Prompts: `restyle_site`, `add_section`,
+`fix_page_audit`. The server instructions and guide gain a presentation section: read before
+editing, tokens before templates, never put content in a template, preview then build.
+
+CLI: `agentcms templates list|get|reset|validate`, `agentcms theme get|set`,
+`agentcms preview <slug> [--screenshot file] [--mobile]`, and `agentcms serve` also serves the built
+site at `/` so an agent can hand the user a link. API: `/v1/templates*`, `/v1/theme`,
+`/v1/preview/{collection}/{slug}`, `/v1/pages/audit`.
+
+### Previews
+
+`preview_page` renders one route in memory, runs the page audit and returns three things so every
+client gets the best it can show: a self-contained HTML document (CSS inlined, absolute URLs) that
+Claude can open as an artifact, PNG screenshots at desktop and mobile widths taken with headless
+Chromium through `playwright-core` (an optional peer dependency; without it the tool says how to
+enable screenshots and still returns the HTML), and an MCP Apps view: the tool points at a
+`ui://agentcms/preview` resource that hosts with MCP Apps support (Claude among them) render in a
+sandboxed iframe inside the chat, while other hosts fall back to the text and image blocks.
+
+### Rendered-page audit
+
+A new audit area, `page`, checks the final HTML rather than the Markdown: `<title>` and meta
+description match the entry, canonical and robots tags, complete Open Graph and Twitter card,
+parseable JSON-LD, exactly one H1, `lang` and viewport, images with alt, internal links that
+resolve to built routes, landmarks (header, main, nav, footer), a skip link, and page weight.
+`audit_content` includes it for entries when page rendering is on; `audit_pages` covers every
+route including lists; the briefing reports failing pages.
+
+### Default theme
+
+Semantic HTML, no framework, one stylesheet driven by `theme.json` tokens through CSS custom
+properties, light and dark via the system preference, responsive from phone width up. Post pages
+render the answer-first block, key takeaways, table of contents, body, FAQ as collapsible
+details, author card and related posts, so the AEO structures the content model produces are
+visible by default. Dependency-free client-side search over the JSON index. Every template carries
+a short comment stating what it renders and which variables it uses.
+
+### Status
+
+| Step | Status |
+| --- | --- |
+| Config and output layout change, data path, html toggle | |
+| Default theme (templates, assets, theme.json) | |
+| Renderer, context builder, head generator, page builder, assets | |
+| Template and theme stores with validation, diff, reset | |
+| Rendered-page audit | |
+| Previews: HTML, screenshots, MCP Apps resource | |
+| MCP tools, resources, prompts; guide and instructions | |
+| CLI and API surface, static serving | |
+| Tests and docs | |
