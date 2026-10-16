@@ -114,7 +114,17 @@ describe("routes and page build", () => {
   });
 
   it("shows the answer box when the answer is not the opening paragraph", async () => {
-    await cms.update("posts", "seo-basics", { aeo: { answer: "A distinct forty word answer that search engines can quote without the surrounding article, written separately from the body." } }, { enrich: false });
+    await cms.update(
+      "posts",
+      "seo-basics",
+      {
+        aeo: {
+          answer:
+            "A distinct forty word answer that search engines can quote without the surrounding article, written separately from the body.",
+        },
+      },
+      { enrich: false },
+    );
     const p = await cms.preview({ collection: "posts", slug: "seo-basics" });
     expect(p.html).toContain('class="answer"');
     expect(p.html).toContain('class="lede"');

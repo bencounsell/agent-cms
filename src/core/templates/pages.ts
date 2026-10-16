@@ -1,6 +1,5 @@
 import path from "node:path";
 import type { Liquid } from "liquidjs";
-import type { CmsConfig } from "../config/schema.ts";
 import { exists, listFiles, readText, sha256 } from "../util/fs.ts";
 import { slugify, truncateAtWord } from "../util/text.ts";
 import {

@@ -40,7 +40,7 @@ function abs(siteUrl: string, p: string | undefined): string | undefined {
  * The SEO head block the CMS owns. Templates place it with `{{ head | raw }}` so a restyle can
  * never drop the title, description, canonical, social cards, structured data or feed links.
  */
-export function renderHead(input: HeadInput, config: CmsConfig, theme: ThemeTokens): string {
+export function renderHead(input: HeadInput, _config: CmsConfig, theme: ThemeTokens): string {
   const tags: string[] = [];
   const meta = (attrs: Record<string, string | undefined>) => {
     const parts = Object.entries(attrs)
