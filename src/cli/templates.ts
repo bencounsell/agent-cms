@@ -1,5 +1,9 @@
 import { randomUUID } from "node:crypto";
+import { fileURLToPath } from "node:url";
 import type { CmsConfig } from "../core/config/schema.ts";
+
+/** Absolute path of the agentcms launcher, valid from both src/ and dist/. */
+export const BIN_PATH = fileURLToPath(new URL("../../bin/agentcms.js", import.meta.url));
 
 export function agentsMd(config: CmsConfig): string {
   return `# AGENTS.md
@@ -111,40 +115,46 @@ export function clientConfig(
   client: ClientName,
   projectRoot: string,
 ): { file?: string; content: string; note: string } {
-  const stdio = { command: "npx", args: ["-y", "agentcms", "mcp"] };
+  // Project-level files are committed, so they call the `agentcms` command from PATH.
+  // App-level files (Claude Desktop, Codex, Windsurf) run without a shell PATH, so they get
+  // absolute paths to this Node binary and this install's launcher, plus the project cwd.
+  const fromPath = { command: "agentcms", args: ["mcp"] };
+  const absolute = { command: process.execPath, args: [BIN_PATH, "mcp"], cwd: projectRoot };
+  const pathNote =
+    "Requires `agentcms` on your PATH (npm install -g agentcms, or the global link from the install guide).";
   switch (client) {
     case "claude-code":
       return {
         file: ".mcp.json",
-        content: `${JSON.stringify({ mcpServers: { agentcms: stdio } }, null, 2)}\n`,
-        note: `Claude Code picks up .mcp.json automatically from the project root. Alternatively run:\n  claude mcp add agentcms -- npx -y agentcms mcp`,
+        content: `${JSON.stringify({ mcpServers: { agentcms: fromPath } }, null, 2)}\n`,
+        note: `Claude Code picks up .mcp.json automatically from the project root. ${pathNote}\nAlternatively: claude mcp add agentcms -- agentcms mcp`,
       };
     case "cursor":
       return {
         file: ".cursor/mcp.json",
-        content: `${JSON.stringify({ mcpServers: { agentcms: stdio } }, null, 2)}\n`,
-        note: "Cursor reads .cursor/mcp.json in the project. Enable the server in Settings → MCP.",
-      };
-    case "windsurf":
-      return {
-        content: `${JSON.stringify({ mcpServers: { agentcms: { ...stdio, cwd: projectRoot } } }, null, 2)}\n`,
-        note: "Add this to ~/.codeium/windsurf/mcp_config.json.",
+        content: `${JSON.stringify({ mcpServers: { agentcms: fromPath } }, null, 2)}\n`,
+        note: `Cursor reads .cursor/mcp.json in the project. Enable the server in Settings → MCP. ${pathNote}`,
       };
     case "vscode":
       return {
         file: ".vscode/mcp.json",
-        content: `${JSON.stringify({ servers: { agentcms: { type: "stdio", ...stdio } } }, null, 2)}\n`,
-        note: "VS Code (Copilot agent mode) reads .vscode/mcp.json. VS Code supports sampling, so the CMS can use the editor's model when no API key is set.",
+        content: `${JSON.stringify({ servers: { agentcms: { type: "stdio", ...fromPath } } }, null, 2)}\n`,
+        note: `VS Code (Copilot agent mode) reads .vscode/mcp.json. VS Code supports sampling, so the CMS can use the editor's model when no API key is set. ${pathNote}`,
+      };
+    case "windsurf":
+      return {
+        content: `${JSON.stringify({ mcpServers: { agentcms: absolute } }, null, 2)}\n`,
+        note: "Add this to ~/.codeium/windsurf/mcp_config.json.",
       };
     case "codex":
       return {
-        content: `[mcp_servers.agentcms]\ncommand = "npx"\nargs = ["-y", "agentcms", "mcp"]\ncwd = "${projectRoot}"\n`,
+        content: `[mcp_servers.agentcms]\ncommand = ${JSON.stringify(process.execPath)}\nargs = [${JSON.stringify(BIN_PATH)}, "mcp"]\ncwd = ${JSON.stringify(projectRoot)}\n`,
         note: "Add this to ~/.codex/config.toml.",
       };
     default:
       return {
-        content: `${JSON.stringify({ mcpServers: { agentcms: { ...stdio, cwd: projectRoot } } }, null, 2)}\n`,
-        note: "Add this to claude_desktop_config.json (Claude → Settings → Developer → Edit Config). Claude Desktop needs the cwd so it finds agentcms.config.json.",
+        content: `${JSON.stringify({ mcpServers: { agentcms: absolute } }, null, 2)}\n`,
+        note: "Add this to claude_desktop_config.json (Claude → Settings → Developer → Edit Config), then restart Claude Desktop. The absolute paths mean it works even though desktop apps do not see your shell PATH; the cwd tells the server which project to open.",
       };
   }
 }

@@ -25,17 +25,17 @@ you ──▶ agent ──▶ agentcms (MCP / CLI / HTTP) ──▶ content/*.md
 
 Requires Node.js 22.12 or newer.
 
-```bash
-npm install -g agentcms
-# or run it on demand with: npx agentcms …
-```
-
-From source (until the package is published, or for development):
+The package is not on npm yet, so install it from the repository (this gives you a global `agentcms` command):
 
 ```bash
 git clone https://github.com/bencounsell/agent-cms
-cd agent-cms && pnpm install && pnpm build && pnpm link --global
+cd agent-cms
+pnpm install && pnpm build && pnpm pack
+npm install -g ./agentcms-0.1.0.tgz
+agentcms --version
 ```
+
+Once published: `npm install -g agentcms`.
 
 ## First steps
 

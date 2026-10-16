@@ -39,6 +39,7 @@
   "files": [
     "bin",
     "dist",
+    "theme",
     "schemas",
     "docs",
     "README.md"

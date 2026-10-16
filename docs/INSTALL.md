@@ -13,9 +13,19 @@ npm install -g agentcms
 agentcms --version
 ```
 
-`npx -y agentcms …` works without a global install; the MCP configs below use that form so they work on any machine.
+Until the package is published on npm, install it from the repository. Either way you end up with an `agentcms` command on your PATH.
 
-From source: `git clone https://github.com/bencounsell/agent-cms && cd agent-cms && pnpm install && pnpm build && pnpm link --global`.
+```bash
+git clone https://github.com/bencounsell/agent-cms
+cd agent-cms
+pnpm install          # or: corepack enable && pnpm install
+pnpm build
+pnpm pack             # writes agentcms-0.1.0.tgz
+npm install -g ./agentcms-0.1.0.tgz
+agentcms --version
+```
+
+For hacking on agentcms itself, `pnpm link --global` instead of pack-and-install makes the global command follow your working copy (run `pnpm build` after changes).
 
 ## 2. Create the project
 
@@ -38,34 +48,34 @@ What is created:
 
 ## 3. Connect a client
 
-All clients run the same stdio command: `npx -y agentcms mcp` from the project directory (the server finds `agentcms.config.json` by walking up from the working directory, or pass `--root`).
+All clients run the same stdio server, `agentcms mcp`, from the project directory (the server finds `agentcms.config.json` by walking up from the working directory, or pass `--root`). Project-level configs call the `agentcms` command from your PATH; app-level configs (Claude Desktop, Codex, Windsurf) get absolute paths to Node and the launcher plus the project `cwd`, because desktop apps do not see your shell PATH. `agentcms install <client>` prints or writes the right form with your paths filled in.
 
 ### Claude Code
 
 `.mcp.json` in the project root is picked up automatically:
 
 ```json
-{ "mcpServers": { "agentcms": { "command": "npx", "args": ["-y", "agentcms", "mcp"] } } }
+{ "mcpServers": { "agentcms": { "command": "agentcms", "args": ["mcp"] } } }
 ```
 
-Or: `claude mcp add agentcms -- npx -y agentcms mcp`
+Or: `claude mcp add agentcms -- agentcms mcp`
 
 ### Claude Desktop
 
-Claude → Settings → Developer → Edit Config, add (the `cwd` matters so the server finds the project):
+Run `agentcms install claude-desktop` inside the project; it prints a block like this with your real paths:
 
 ```json
-{ "mcpServers": { "agentcms": { "command": "npx", "args": ["-y", "agentcms", "mcp"], "cwd": "/absolute/path/to/my-site" } } }
+{ "mcpServers": { "agentcms": { "command": "/usr/local/bin/node", "args": ["/usr/local/lib/node_modules/agentcms/bin/agentcms.js", "mcp"], "cwd": "/absolute/path/to/my-site" } } }
 ```
 
-`agentcms install claude-desktop` prints this with the right path.
+Paste it into Claude → Settings → Developer → Edit Config (`claude_desktop_config.json`) and restart Claude Desktop. The absolute paths are deliberate: desktop apps do not inherit your shell PATH, and the `cwd` tells the server which project to open.
 
 ### Cursor
 
 `.cursor/mcp.json` in the project (written by `agentcms install cursor`):
 
 ```json
-{ "mcpServers": { "agentcms": { "command": "npx", "args": ["-y", "agentcms", "mcp"] } } }
+{ "mcpServers": { "agentcms": { "command": "agentcms", "args": ["mcp"] } } }
 ```
 
 ### VS Code (Copilot agent mode)
@@ -73,17 +83,17 @@ Claude → Settings → Developer → Edit Config, add (the `cwd` matters so the
 `.vscode/mcp.json` (written by `agentcms install vscode`). VS Code supports MCP sampling, so the CMS can use the editor's model when no API key is set.
 
 ```json
-{ "servers": { "agentcms": { "type": "stdio", "command": "npx", "args": ["-y", "agentcms", "mcp"] } } }
+{ "servers": { "agentcms": { "type": "stdio", "command": "agentcms", "args": ["mcp"] } } }
 ```
 
 ### Codex
 
-`~/.codex/config.toml`:
+`agentcms install codex` prints the block for `~/.codex/config.toml` with absolute paths:
 
 ```toml
 [mcp_servers.agentcms]
-command = "npx"
-args = ["-y", "agentcms", "mcp"]
+command = "/usr/local/bin/node"
+args = ["/usr/local/lib/node_modules/agentcms/bin/agentcms.js", "mcp"]
 cwd = "/absolute/path/to/my-site"
 ```
 
