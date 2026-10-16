@@ -101,7 +101,9 @@ describe("routes and page build", () => {
     );
     expect(html).toContain('property="og:image" content="https://test.example/img/a.png"');
     expect(html).toContain('<script type="application/ld+json">');
-    expect(html).toContain('class="answer"');
+    // The answer equals the opening paragraph here, so the theme shows it once, in the body.
+    expect(html).not.toContain('class="answer"');
+    expect(html).not.toContain('class="lede"');
     expect(html).toContain('class="faq"');
     expect(html).toContain("author-card");
     expect(html).toMatch(/<link rel="stylesheet" href="\/assets\/styles\.[0-9a-f]{8}\.css">/);
@@ -109,6 +111,13 @@ describe("routes and page build", () => {
     const list = await readFile(path.join(m.outDir, "blog/index.html"), "utf8");
     expect(list).toContain("Page 1 of 2");
     expect((list.match(/class="card"/g) ?? []).length).toBe(2);
+  });
+
+  it("shows the answer box when the answer is not the opening paragraph", async () => {
+    await cms.update("posts", "seo-basics", { aeo: { answer: "A distinct forty word answer that search engines can quote without the surrounding article, written separately from the body." } }, { enrich: false });
+    const p = await cms.preview({ collection: "posts", slug: "seo-basics" });
+    expect(p.html).toContain('class="answer"');
+    expect(p.html).toContain('class="lede"');
   });
 
   it("skips pages when html rendering is off", async () => {
