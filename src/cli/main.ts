@@ -1102,9 +1102,8 @@ program
       const cms = await open();
       const m = await cms.build({ outDir: opts.out, includeDrafts: opts.drafts });
       out(m, () => {
-        process.stdout.write(
-          `${pc.green("✔")} built ${m.entries} entries → ${m.outDir} (${m.files.length} files)\n`,
-        );
+        process.stdout.write(`${pc.green("✔")} built ${m.entries} entries${m.pages ? `, ${m.pages} pages` : ""} → ${m.outDir} (${m.files.length} files)
+`);
         for (const w of m.warnings) process.stdout.write(`  ${pc.yellow("!")} ${w}\n`);
       });
     }),
