@@ -5,7 +5,15 @@ import type { Entry } from "../content/schema.ts";
 import { type MarkdownAnalysis, renderHtml, tableOfContents } from "../markdown/analyze.ts";
 import { buildJsonLd } from "../metadata/jsonld.ts";
 import { nowIso } from "../util/dates.ts";
-import { ensureDir, readJsonIfExists, remove, sha256, writeJson, writeText } from "../util/fs.ts";
+import {
+  ensureDir,
+  readJsonIfExists,
+  remove,
+  sha256,
+  writeBuffer,
+  writeJson,
+  writeText,
+} from "../util/fs.ts";
 
 export interface BuildInput {
   root: string;
@@ -14,7 +22,11 @@ export interface BuildInput {
   analyses: Map<string, MarkdownAnalysis>;
   outDir?: string;
   includeDrafts?: boolean;
+  /** Extra outputs (rendered pages, assets) written through the same manifest-tracked writer. */
+  extra?: (write: BuildWriter) => Promise<void>;
 }
+
+export type BuildWriter = (rel: string, content: string | Buffer) => Promise<void>;
 
 export interface BuildManifest {
   generatedAt: string;
@@ -33,8 +45,20 @@ function escapeXml(s: string): string {
   );
 }
 
-function publicUrl(config: CmsConfig, rel: string): string {
-  return `${config.site.url.replace(/\/+$/, "")}${config.build.publicPath.replace(/\/+$/, "")}/${rel}`;
+/** Absolute URL of a file written at the site root. */
+function rootUrl(config: CmsConfig, rel: string): string {
+  return `${config.site.url.replace(/\/+$/, "")}/${rel}`;
+}
+
+/** Absolute URL of a file written under build.dataPath. */
+function dataUrl(config: CmsConfig, rel: string): string {
+  return rootUrl(config, `${dataRel(config, rel)}`);
+}
+
+/** Path of a data file relative to outDir. */
+export function dataRel(config: CmsConfig, rel: string): string {
+  const dp = config.build.dataPath.replace(/^\/+|\/+$/g, "");
+  return dp ? `${dp}/${rel}` : rel;
 }
 
 export async function buildSite(input: BuildInput): Promise<BuildManifest> {
@@ -45,19 +69,22 @@ export async function buildSite(input: BuildInput): Promise<BuildManifest> {
   const files: BuildManifest["files"] = [];
   const written = new Set<string>();
 
-  const write = async (rel: string, content: string) => {
+  const write: BuildWriter = async (rel, content) => {
     const abs = path.join(outDir, rel);
-    await writeText(abs, content);
+    if (typeof content === "string") await writeText(abs, content);
+    else await writeBuffer(abs, content);
+    const text = typeof content === "string" ? content : content.toString("base64");
     files.push({
       path: rel,
-      bytes: Buffer.byteLength(content),
-      hash: sha256(content).slice(0, 16),
+      bytes: typeof content === "string" ? Buffer.byteLength(content) : content.length,
+      hash: sha256(text).slice(0, 16),
     });
     written.add(rel);
   };
 
   await ensureDir(outDir);
-  const previous = await readJsonIfExists<BuildManifest>(path.join(outDir, "manifest.json"));
+  const manifestRel = dataRel(config, "manifest.json");
+  const previous = await readJsonIfExists<BuildManifest>(path.join(outDir, manifestRel));
 
   const visible = input.entries.filter(
     (e) => includeDrafts || e.frontmatter.status === "published",
@@ -138,7 +165,7 @@ export async function buildSite(input: BuildInput): Promise<BuildManifest> {
       };
       index.push(record);
       await write(
-        `content/${collection.name}/${entry.slug}.json`,
+        dataRel(config, `content/${collection.name}/${entry.slug}.json`),
         `${JSON.stringify({ ...record, body: entry.body, html, text: analysis.text, toc: tableOfContents(analysis.headings), headings: analysis.headings, jsonld }, null, 2)}\n`,
       );
       if (collection.listable) {
@@ -160,7 +187,7 @@ export async function buildSite(input: BuildInput): Promise<BuildManifest> {
       }
     }
     await write(
-      `content/${collection.name}/index.json`,
+      dataRel(config, `content/${collection.name}/index.json`),
       `${JSON.stringify({ collection: collection.name, kind: collection.kind, label: collection.label, count: index.length, entries: index }, null, 2)}\n`,
     );
     collectionsOut.push({
@@ -175,11 +202,11 @@ export async function buildSite(input: BuildInput): Promise<BuildManifest> {
   }
 
   await write(
-    "site.json",
+    dataRel(config, "site.json"),
     `${JSON.stringify({ generatedAt: nowIso(), site: config.site, collections: collectionsOut, taxonomy: config.taxonomy, outputs: { feeds: config.build.feeds, sitemap: config.build.sitemap, llmsTxt: config.build.llmsTxt, searchIndex: config.build.searchIndex } }, null, 2)}\n`,
   );
   await write(
-    "taxonomy.json",
+    dataRel(config, "taxonomy.json"),
     `${JSON.stringify({ categories: [...categoryCounts].map(([name, count]) => ({ name, count })).sort((a, b) => b.count - a.count), tags: [...tagCounts].map(([name, count]) => ({ name, count })).sort((a, b) => b.count - a.count) }, null, 2)}\n`,
   );
 
@@ -207,13 +234,14 @@ export async function buildSite(input: BuildInput): Promise<BuildManifest> {
       searchOptions: { boost: { title: 3, tags: 2 }, prefix: true, fuzzy: 0.2 },
     });
     ms.addAll(searchDocs);
-    await write("search-index.json", JSON.stringify(ms.toJSON()));
+    await write(dataRel(config, "search-index.json"), JSON.stringify(ms.toJSON()));
   }
   if (config.build.robots) await write("robots.txt", robots(config));
+  if (input.extra) await input.extra(write);
 
   // Remove files from the previous build that were not regenerated (deleted entries).
   for (const f of previous?.files ?? []) {
-    if (!written.has(f.path) && f.path !== "manifest.json") {
+    if (!written.has(f.path) && f.path !== manifestRel) {
       await remove(path.join(outDir, f.path));
     }
   }
@@ -224,7 +252,7 @@ export async function buildSite(input: BuildInput): Promise<BuildManifest> {
     files,
     warnings,
   };
-  await writeJson(path.join(outDir, "manifest.json"), manifest);
+  await writeJson(path.join(outDir, manifestRel), manifest);
   return manifest;
 }
 
@@ -271,7 +299,7 @@ function rss(config: CmsConfig, items: Item[]): string {
     <description>${escapeXml(site.description)}</description>
     <language>${escapeXml(site.language)}</language>
     <lastBuildDate>${new Date().toUTCString()}</lastBuildDate>
-    <atom:link href="${escapeXml(publicUrl(config, "feeds/rss.xml"))}" rel="self" type="application/rss+xml" />
+    <atom:link href="${escapeXml(rootUrl(config, "feeds/rss.xml"))}" rel="self" type="application/rss+xml" />
 ${body}
   </channel>
 </rss>
@@ -300,7 +328,7 @@ function atom(config: CmsConfig, items: Item[]): string {
   <title>${escapeXml(site.name)}</title>
   <subtitle>${escapeXml(site.description)}</subtitle>
   <link href="${escapeXml(site.url)}" />
-  <link href="${escapeXml(publicUrl(config, "feeds/atom.xml"))}" rel="self" />
+  <link href="${escapeXml(rootUrl(config, "feeds/atom.xml"))}" rel="self" />
   <id>${escapeXml(site.url)}/</id>
   <updated>${escapeXml(updated)}</updated>
 ${body}
@@ -313,7 +341,7 @@ function jsonFeed(config: CmsConfig, items: Item[]): Record<string, unknown> {
     version: "https://jsonfeed.org/version/1.1",
     title: config.site.name,
     home_page_url: config.site.url,
-    feed_url: publicUrl(config, "feeds/feed.json"),
+    feed_url: rootUrl(config, "feeds/feed.json"),
     description: config.site.description,
     language: config.site.language,
     items: items.map(({ entry, description }) => ({
@@ -376,8 +404,8 @@ function llmsTxt(config: CmsConfig, items: Item[]): string {
   lines.push(
     "## Optional",
     "",
-    `- [Full content](${publicUrl(config, "llms-full.txt")}): every entry in Markdown`,
-    `- [JSON content API](${publicUrl(config, "site.json")}): machine-readable index`,
+    `- [Full content](${rootUrl(config, "llms-full.txt")}): every entry in Markdown`,
+    `- [JSON content API](${dataUrl(config, "site.json")}): machine-readable index`,
     "",
   );
   return lines.join("\n");

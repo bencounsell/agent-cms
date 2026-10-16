@@ -17,7 +17,8 @@ This project's content is managed by **agentcms**, an agent-first headless CMS. 
 
 - \`agentcms.config.json\` – site identity, collections, taxonomy, AI/research/SEO/build settings
 ${config.collections.map((c) => `- \`${c.path}/\` – ${c.label ?? c.name} (${c.kind}), served at \`${c.urlPattern}\``).join("\n")}
-- \`${config.build.outDir}/\` – generated static output (JSON API, feeds, sitemap, llms.txt, search index)
+- \`${config.build.html.templatesDir}/\` and \`theme.json\` – Liquid templates and design tokens the site is rendered with (managed through the agentcms template tools; a bundled default theme fills in missing files)
+- \`${config.build.outDir}/\` – the built site: pages, assets, sitemap, feeds, llms.txt, plus the JSON API under \`${config.build.dataPath}/\`
 - \`.agentcms/\` – cache: competitor research snapshots, last briefing and comparison
 
 ## Writing rules

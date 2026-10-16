@@ -1,0 +1,13 @@
+{%- comment -%} One entry in a list. Rendered with: entry. {%- endcomment -%}
+<article class="card">
+  {% if entry.image %}<a class="card__image" href="{{ entry.path }}"><img src="{{ entry.image }}" alt="{{ entry.imageAlt | default: '' }}" loading="lazy"></a>{% endif %}
+  <div class="card__body">
+    <p class="meta">
+      {% if entry.publishedAt %}<time datetime="{{ entry.publishedAt }}">{{ entry.publishedAt | date: "%-d %B %Y" }}</time>{% endif %}
+      {% if entry.category %} · <a href="{{ entry.categoryUrl }}">{{ entry.category }}</a>{% endif %}
+      {% if entry.readingTime %} · {{ entry.readingTime }} min read{% endif %}
+    </p>
+    <h2 class="card__title"><a href="{{ entry.path }}">{{ entry.title }}</a></h2>
+    {% if entry.excerpt %}<p>{{ entry.excerpt }}</p>{% elsif entry.description %}<p>{{ entry.description }}</p>{% endif %}
+  </div>
+</article>

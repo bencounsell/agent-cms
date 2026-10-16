@@ -1,0 +1,16 @@
+{%- comment -%} Site header and navigation. Variables: site (site.nav is the list of {label, url}), theme. {%- endcomment -%}
+<header class="site-header">
+  <div class="container site-header__inner">
+    <a class="site-title" href="/">{{ site.name }}</a>
+    <nav class="site-nav" aria-label="Main">
+      {% for item in site.nav %}<a href="{{ item.url }}"{% if item.url == page.path %} aria-current="page"{% endif %}>{{ item.label }}</a>{% endfor %}
+    </nav>
+    {% if theme.features.search %}
+    <form class="site-search" role="search" data-site-search data-index="{{ site.dataPath }}/content/{{ site.searchCollection }}/index.json">
+      <label class="visually-hidden" for="site-search-input">Search</label>
+      <input id="site-search-input" type="search" name="q" placeholder="Search…" autocomplete="off">
+      <ul class="site-search__results" hidden></ul>
+    </form>
+    {% endif %}
+  </div>
+</header>

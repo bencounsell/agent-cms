@@ -84,6 +84,35 @@ describe("HTTP API", () => {
     );
   });
 
+  it("exposes templates, theme, routes and previews, and serves the built site", async () => {
+    const cms = await openCms(project.root);
+    await cms.updateConfig({ build: { html: { enabled: true } } });
+    const siteApp = createApp(cms, { token: "secret", requireToken: true });
+    const list = await body(await siteApp.request("/v1/templates", { headers: H }));
+    expect(list.templates.length).toBeGreaterThan(15);
+    const put = await siteApp.request("/v1/templates", {
+      method: "PUT",
+      headers: H,
+      body: JSON.stringify({ path: "layouts/base.liquid", source: "<html></html>" }),
+    });
+    expect(put.status).toBe(400);
+    expect(
+      (await body(await siteApp.request("/v1/theme", { headers: H }))).theme.colors.accent,
+    ).toBe("#2457d6");
+    expect(
+      (await body(await siteApp.request("/v1/routes", { headers: H }))).routes.length,
+    ).toBeGreaterThan(3);
+    const html = await siteApp.request("/v1/preview?path=/", { headers: H });
+    expect(html.headers.get("content-type")).toContain("text/html");
+    expect(await html.text()).toContain("<title>Test Site");
+    const audit = await body(await siteApp.request("/v1/pages/audit", { headers: H }));
+    expect(audit.results.length).toBeGreaterThan(3);
+    await cms.build();
+    const page = await siteApp.request("/blog/what-is-an-agent-first-cms/", { headers: H });
+    expect(page.status).toBe(200);
+    expect(await page.text()).toContain("What is an agent-first CMS?");
+  });
+
   it("speaks MCP over streamable HTTP with sessions", async () => {
     const init = await app.request("/mcp", {
       method: "POST",

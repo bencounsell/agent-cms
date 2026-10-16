@@ -10,8 +10,10 @@ my-site/
 │   ├── posts/<slug>.md
 │   ├── pages/<slug>.md
 │   └── authors/<slug>.md
+├── templates/                 # Liquid templates (layouts, pages, partials, assets); see TEMPLATES.md
+├── theme.json                 # design tokens
 ├── .agentcms/                 # cache: research/<host>.json, last-briefing.json, last-comparison.json
-└── public/cms/                # build output
+└── dist/                      # built site, with the JSON API under dist/cms/
 ```
 
 ## Entry files
@@ -107,8 +109,10 @@ Rules:
                 "maxPagesPerSite": 40, "requestDelayMs": 600, "refreshAfterDays": 7, "pathPrefixes": [] },
   "seo": { "targetWordCount": 1200, "titleLength": { "min": 30, "max": 60 }, "descriptionLength": { "min": 70, "max": 160 },
            "staleAfterDays": 180, "minInternalLinks": 2, "minAuditScoreToPublish": 60 },
-  "build": { "outDir": "public/cms", "publicPath": "/cms", "feeds": true, "feedLimit": 20, "sitemap": true,
-             "llmsTxt": true, "searchIndex": true, "robots": true, "includeDrafts": false }
+  "build": { "outDir": "dist", "dataPath": "cms", "feeds": true, "feedLimit": 20, "sitemap": true,
+             "llmsTxt": true, "searchIndex": true, "robots": true, "includeDrafts": false,
+             "html": { "enabled": true, "templatesDir": "templates", "pageSize": 10, "assetsPath": "/assets",
+                       "tagsPath": "/tags", "categoriesPath": "/categories", "nav": [ { "label": "Blog", "url": "/blog/" } ] } }
 }
 ```
 

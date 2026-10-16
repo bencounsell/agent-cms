@@ -1,0 +1,9 @@
+{%- comment -%} Site footer. Variables: site, theme, build. {%- endcomment -%}
+<footer class="site-footer">
+  <div class="container">
+    <p>{% if theme.footer.text != "" %}{{ theme.footer.text }}{% else %}&copy; {{ build.year }} {{ site.name }}{% endif %}
+      {% if site.feeds %} · <a href="/feeds/rss.xml">RSS</a>{% endif %}
+      {% if site.llmsTxt %} · <a href="/llms.txt">llms.txt</a>{% endif %}
+    </p>
+  </div>
+</footer>

@@ -1,0 +1,7 @@
+{%- comment -%} Related entries. Rendered with: related (list of entry summaries). {%- endcomment -%}
+{% if related.size > 0 %}
+<section class="related" aria-labelledby="related-title">
+  <h2 id="related-title">Related</h2>
+  <ul>{% for item in related %}<li><a href="{{ item.path }}">{{ item.title }}</a>{% if item.description %} <span class="muted">— {{ item.description | truncatewords: 18 }}</span>{% endif %}</li>{% endfor %}</ul>
+</section>
+{% endif %}

@@ -33,24 +33,24 @@ describe("build", () => {
     expect(m.entries).toBe(2);
     const files = m.files.map((f) => f.path);
     for (const f of [
-      "content/posts/index.json",
-      "content/posts/what-is-an-agent-first-cms.json",
-      "site.json",
-      "taxonomy.json",
+      "cms/content/posts/index.json",
+      "cms/content/posts/what-is-an-agent-first-cms.json",
+      "cms/site.json",
+      "cms/taxonomy.json",
       "feeds/rss.xml",
       "feeds/atom.xml",
       "feeds/feed.json",
       "sitemap.xml",
       "llms.txt",
       "llms-full.txt",
-      "search-index.json",
+      "cms/search-index.json",
       "robots.txt",
     ]) {
       expect(files).toContain(f);
     }
-    expect(files).not.toContain("content/posts/seo-basics.json");
+    expect(files).not.toContain("cms/content/posts/seo-basics.json");
     const entry = JSON.parse(
-      await readFile(path.join(out, "content/posts/what-is-an-agent-first-cms.json"), "utf8"),
+      await readFile(path.join(out, "cms/content/posts/what-is-an-agent-first-cms.json"), "utf8"),
     );
     expect(entry.html).toContain('<h2 id="what-is-an-agent-first-cms">');
     expect(entry.jsonld["@graph"].map((g: { "@type": string }) => g["@type"])).toEqual([
@@ -71,17 +71,17 @@ describe("build", () => {
     const sitemap = await readFile(path.join(out, "sitemap.xml"), "utf8");
     expect(sitemap).toContain("https://test.example/blog/what-is-an-agent-first-cms");
     expect(sitemap).not.toContain("seo-basics");
-    const search = JSON.parse(await readFile(path.join(out, "search-index.json"), "utf8"));
+    const search = JSON.parse(await readFile(path.join(out, "cms/search-index.json"), "utf8"));
     expect(search.documentCount).toBe(1);
     expect(await readFile(path.join(out, "robots.txt"), "utf8")).toContain("ClaudeBot");
   });
 
   it("includes drafts on request and removes stale files", async () => {
     const m1 = await cms.build({ includeDrafts: true });
-    expect(m1.files.map((f) => f.path)).toContain("content/posts/seo-basics.json");
+    expect(m1.files.map((f) => f.path)).toContain("cms/content/posts/seo-basics.json");
     await cms.delete("posts", "seo-basics");
     const m2 = await cms.build({ includeDrafts: true });
-    expect(m2.files.map((f) => f.path)).not.toContain("content/posts/seo-basics.json");
-    await expect(stat(path.join(m2.outDir, "content/posts/seo-basics.json"))).rejects.toThrow();
+    expect(m2.files.map((f) => f.path)).not.toContain("cms/content/posts/seo-basics.json");
+    await expect(stat(path.join(m2.outDir, "cms/content/posts/seo-basics.json"))).rejects.toThrow();
   });
 });

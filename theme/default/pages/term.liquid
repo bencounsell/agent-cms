@@ -1,0 +1,10 @@
+{%- comment -%} One tag or category. Variables: term ({kind, name, url, count}), entries, pagination, site. {%- endcomment -%}
+{% layout "layouts/base" %}
+{% block content %}
+<section class="listing">
+  <p class="meta">{{ term.kind | capitalize }}</p>
+  <h1>{{ term.name }}</h1>
+  <div class="cards">{% for entry in entries %}{% render "partials/post-card", entry: entry %}{% endfor %}</div>
+  {% render "partials/pagination", pagination: pagination %}
+</section>
+{% endblock %}

@@ -11,10 +11,12 @@ import {
 import { serializeEntry, summarizeEntry } from "../core/serialize.ts";
 import { CmsError } from "../core/util/errors.ts";
 import { log } from "../core/util/log.ts";
+import { SERVER_VERSION } from "../core/version.ts";
 import { AGENT_GUIDE, SERVER_INSTRUCTIONS } from "./guide.ts";
 import { registerPrompts } from "./prompts.ts";
+import { registerTemplateTools } from "./templates.ts";
 
-export const SERVER_VERSION = "0.1.0";
+export { SERVER_VERSION };
 
 function ok(data: unknown, text?: string): CallToolResult {
   return {
@@ -966,5 +968,6 @@ export function createMcpServer(cms: Cms): McpServer {
   );
 
   registerPrompts(server, cms);
+  registerTemplateTools(server, cms);
   return server;
 }

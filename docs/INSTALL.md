@@ -107,7 +107,20 @@ Deterministic metadata (keywords, reading time, excerpt, social defaults, relate
 
 Check what is active: `agentcms doctor`.
 
-## 5. Verify
+## 5. Screenshots in previews (optional)
+
+`preview_page` and `agentcms preview --screenshot` render pages in headless Chromium when it is available:
+
+```bash
+npm i playwright-core
+npx playwright install chromium
+# or reuse an existing browser:
+export AGENTCMS_CHROMIUM_PATH=/path/to/chrome
+```
+
+Without a browser, previews still return the self-contained HTML and the page audit, and the result explains how to enable screenshots.
+
+## 6. Verify
 
 ```bash
 agentcms doctor      # environment, config, AI mode
@@ -125,3 +138,4 @@ Then, in your agent: "Run get_briefing and tell me what to do."
 | `AGENTCMS_API_TOKEN` | Bearer token for `agentcms serve` |
 | `AGENTCMS_REQUIRE_TOKEN=1` | Require the token even from localhost |
 | `AGENTCMS_LOG=debug\|info\|warn\|error` | Log level (stderr only; stdout is reserved for MCP) |
+| `AGENTCMS_CHROMIUM_PATH` | Chromium binary for preview screenshots |

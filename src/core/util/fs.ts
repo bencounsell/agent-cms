@@ -45,6 +45,13 @@ export async function writeText(p: string, content: string): Promise<void> {
   await rename(tmp, p);
 }
 
+export async function writeBuffer(p: string, content: Buffer): Promise<void> {
+  await ensureDir(path.dirname(p));
+  const tmp = `${p}.${process.pid}.${Date.now()}.tmp`;
+  await writeFile(tmp, content);
+  await rename(tmp, p);
+}
+
 export async function writeJson(p: string, value: unknown): Promise<void> {
   await writeText(p, `${JSON.stringify(value, null, 2)}\n`);
 }

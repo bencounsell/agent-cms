@@ -8,7 +8,7 @@ import { containsPhrase } from "./keywords.ts";
 import { entryKey, type LinkGraph } from "./links.ts";
 import { analyzeReadability, type ReadabilityResult } from "./readability.ts";
 
-export type AuditArea = "seo" | "aeo" | "readability" | "links" | "freshness";
+export type AuditArea = "seo" | "aeo" | "readability" | "links" | "freshness" | "page";
 export type Severity = "error" | "warning" | "info";
 
 export interface AuditCheck {
@@ -29,6 +29,8 @@ export interface AuditScores {
   readability: number;
   links: number;
   freshness: number;
+  /** Rendered-page checks; present when page rendering is enabled. */
+  page?: number;
   overall: number;
 }
 

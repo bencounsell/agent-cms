@@ -12,6 +12,8 @@ import {
   StatusSchema,
 } from "../core/content/schema.ts";
 import { serializeEntry, summarizeEntry } from "../core/serialize.ts";
+import { TemplateStore } from "../core/templates/store.ts";
+import { THEME_FILENAME } from "../core/templates/theme.ts";
 import { CmsError } from "../core/util/errors.ts";
 import { ensureDir, exists, readTextIfExists, writeText } from "../core/util/fs.ts";
 import { setLogLevel } from "../core/util/log.ts";
@@ -205,6 +207,14 @@ program
             await writeText(abs, content);
             written.push(rel);
           }
+        }
+        const templates = new TemplateStore(root, config);
+        for (const rel of await templates.eject()) written.push(rel);
+        const themeFile = path.join(root, THEME_FILENAME);
+        if (!(await exists(themeFile))) {
+          const { ThemeStore } = await import("../core/templates/theme.ts");
+          await new ThemeStore(root).reset();
+          written.push(THEME_FILENAME);
         }
         const gi = path.join(root, ".gitignore");
         const existing = (await readTextIfExists(gi)) ?? "";
@@ -667,30 +677,46 @@ program
   .description("SEO / AEO / readability / links / freshness audit for one entry or all")
   .option("-c, --collection <name>", "collection")
   .option("-s, --status <status>", "filter by status", parseStatus)
+  .option("--pages", "audit every rendered page instead of entries")
   .action(
-    run(async (slug: string | undefined, opts: { collection?: string; status?: Status }) => {
-      const cms = await open();
-      if (slug) {
-        const a = await cms.audit(opts.collection ?? "posts", slug);
-        out(a, () => {
-          process.stdout.write(
-            `${pc.bold(a.title)}  overall ${score(a.scores.overall)}  seo ${score(a.scores.seo)}  aeo ${score(a.scores.aeo)}  readability ${score(a.scores.readability)}  links ${score(a.scores.links)}  freshness ${score(a.scores.freshness)}\n${a.publishable ? pc.green("publishable") : pc.yellow("not publishable")}\n\n`,
-          );
-          for (const c of a.failed)
+    run(
+      async (
+        slug: string | undefined,
+        opts: { collection?: string; status?: Status; pages?: boolean },
+      ) => {
+        const cms = await open();
+        if (opts.pages) {
+          const results = await cms.auditPages();
+          out(results, () => {
+            for (const r of results)
+              process.stdout.write(
+                `${score(r.score).padEnd(13)} ${pc.bold(r.path)} ${pc.dim(r.failed.map((c) => c.id).join(", "))}\n`,
+              );
+          });
+          return;
+        }
+        if (slug) {
+          const a = await cms.audit(opts.collection ?? "posts", slug);
+          out(a, () => {
             process.stdout.write(
-              `  ${c.severity === "error" ? pc.red("✖") : c.severity === "warning" ? pc.yellow("!") : pc.dim("·")} ${c.message}\n      ${pc.dim(c.fix ?? "")}\n`,
+              `${pc.bold(a.title)}  overall ${score(a.scores.overall)}  seo ${score(a.scores.seo)}  aeo ${score(a.scores.aeo)}  readability ${score(a.scores.readability)}  links ${score(a.scores.links)}  freshness ${score(a.scores.freshness)}\n${a.publishable ? pc.green("publishable") : pc.yellow("not publishable")}\n\n`,
+            );
+            for (const c of a.failed)
+              process.stdout.write(
+                `  ${c.severity === "error" ? pc.red("✖") : c.severity === "warning" ? pc.yellow("!") : pc.dim("·")} ${c.message}\n      ${pc.dim(c.fix ?? "")}\n`,
+              );
+          });
+          return;
+        }
+        const results = await cms.auditAll({ collection: opts.collection, status: opts.status });
+        out(results, () => {
+          for (const a of results)
+            process.stdout.write(
+              `${score(a.scores.overall).padEnd(13)} ${pc.bold(`${a.collection}/${a.slug}`)} ${pc.dim(`seo ${a.scores.seo} aeo ${a.scores.aeo} read ${a.scores.readability} links ${a.scores.links}`)} ${a.publishable ? "" : pc.yellow("not publishable")}\n`,
             );
         });
-        return;
-      }
-      const results = await cms.auditAll({ collection: opts.collection, status: opts.status });
-      out(results, () => {
-        for (const a of results)
-          process.stdout.write(
-            `${score(a.scores.overall).padEnd(13)} ${pc.bold(`${a.collection}/${a.slug}`)} ${pc.dim(`seo ${a.scores.seo} aeo ${a.scores.aeo} read ${a.scores.readability} links ${a.scores.links}`)} ${a.publishable ? "" : pc.yellow("not publishable")}\n`,
-          );
-      });
-    }),
+      },
+    ),
   );
 
 program
@@ -872,6 +898,196 @@ research
       await cms.removeCompetitor(host);
       process.stdout.write(`${pc.green("✔")} removed ${host}\n`);
     }),
+  );
+
+// ---------------------------------------------------------------- templates / theme / preview
+
+const templates = program
+  .command("templates")
+  .description("Manage the site's templates (Liquid) and theme assets");
+
+templates
+  .command("list")
+  .description("List templates, where they live and which routes use them")
+  .action(
+    run(async () => {
+      const cms = await open();
+      const list = await cms.templates.list(await cms.siteModel(undefined, true));
+      out(list, () => {
+        for (const t of list)
+          process.stdout.write(
+            `${(t.origin === "project" ? pc.green("project") : pc.dim("default")).padEnd(18)} ${pc.bold(t.path)} ${pc.dim(t.routes.length ? `${t.routes.length} route(s)` : "")}${t.overridesDefault ? pc.yellow("  (overrides default)") : ""}\n`,
+          );
+      });
+    }),
+  );
+
+templates
+  .command("get <path>")
+  .description("Print a template's source (use --vars for the variables it receives)")
+  .option("--vars", "print the variable reference and sample context instead of the source")
+  .action(
+    run(async (rel: string, opts: { vars?: boolean }) => {
+      const cms = await open();
+      const d = await cms.templates.get(
+        rel,
+        opts.vars ? await cms.siteModel(undefined, true) : undefined,
+      );
+      out(d, () => {
+        if (opts.vars)
+          process.stdout.write(
+            `${d.variables.join("\n")}\n\n${JSON.stringify(d.sampleContext, null, 2)}\n`,
+          );
+        else process.stdout.write(d.source);
+      });
+    }),
+  );
+
+templates
+  .command("validate [path]")
+  .description("Validate one project template or all of them")
+  .action(
+    run(async (rel: string | undefined) => {
+      const cms = await open();
+      const model = await cms.siteModel(undefined, true);
+      const targets = rel
+        ? [rel]
+        : (await cms.templates.list())
+            .filter((t) => t.origin === "project" && t.kind !== "asset")
+            .map((t) => t.path);
+      let failed = 0;
+      for (const t of targets) {
+        const d = await cms.templates.get(t);
+        const v = await cms.templates.validate(t, d.source, model);
+        if (!v.ok) failed++;
+        process.stdout.write(
+          `${v.ok ? pc.green("✔") : pc.red("✖")} ${t}${v.errors.map((e) => `\n    ${pc.red(e)}`).join("")}${v.warnings.map((w) => `\n    ${pc.yellow(w)}`).join("")}\n`,
+        );
+      }
+      if (failed) process.exitCode = 1;
+    }),
+  );
+
+templates
+  .command("reset <path>")
+  .description("Restore a template to the bundled default")
+  .action(
+    run(async (rel: string) => {
+      const cms = await open();
+      const r = await cms.templates.reset(rel);
+      process.stdout.write(`${pc.green("✔")} reset ${r.path}\n${r.diff}\n`);
+    }),
+  );
+
+templates
+  .command("eject")
+  .description("Copy every bundled theme file into templates/ (existing files are kept)")
+  .action(
+    run(async () => {
+      const cms = await open();
+      const written = await cms.templates.eject();
+      process.stdout.write(
+        written.length
+          ? `${written.map((w) => `+ ${w}`).join("\n")}\n`
+          : "Nothing to copy; all theme files already exist.\n",
+      );
+    }),
+  );
+
+const theme = program.command("theme").description("Design tokens in theme.json");
+theme
+  .command("get")
+  .description("Print the resolved theme tokens")
+  .action(
+    run(async () => {
+      const cms = await open();
+      process.stdout.write(`${JSON.stringify(await cms.theme.resolve(), null, 2)}\n`);
+    }),
+  );
+theme
+  .command("set <key=value...>")
+  .description("Set tokens, e.g. colors.accent=#ff0066 features.toc=false")
+  .action(
+    run(async (values: string[]) => {
+      const cms = await open();
+      const t = await cms.theme.update(parseSet(values));
+      process.stdout.write(`${pc.green("✔")} theme updated (accent ${t.colors.accent})\n`);
+    }),
+  );
+theme
+  .command("reset")
+  .description("Restore the default theme.json")
+  .action(
+    run(async () => {
+      const cms = await open();
+      await cms.theme.reset();
+      process.stdout.write(`${pc.green("✔")} theme reset\n`);
+    }),
+  );
+
+program
+  .command("routes")
+  .description("List every page the site renders")
+  .option("--drafts", "include drafts")
+  .action(
+    run(async (opts: { drafts?: boolean }) => {
+      const cms = await open();
+      const routes = await cms.routes({ includeDrafts: opts.drafts });
+      out(routes, () => {
+        for (const r of routes)
+          process.stdout.write(
+            `${r.kind.padEnd(11)} ${pc.bold(r.path.padEnd(48))} ${pc.dim(r.template)}\n`,
+          );
+      });
+    }),
+  );
+
+program
+  .command("preview <target>")
+  .description("Render one page: a route path (/, /blog/, /tags/x/) or a slug with -c")
+  .option("-c, --collection <name>", "treat <target> as a slug in this collection")
+  .option("-o, --out <file>", "write the self-contained HTML to a file")
+  .option("--screenshot <file.png>", "write a screenshot (needs playwright-core and Chromium)")
+  .option("--mobile", "mobile viewport for the screenshot")
+  .action(
+    run(
+      async (
+        target: string,
+        opts: { collection?: string; out?: string; screenshot?: string; mobile?: boolean },
+      ) => {
+        const cms = await open();
+        const viewport = opts.mobile ? "mobile" : "desktop";
+        const p = await cms.preview(
+          opts.collection ? { collection: opts.collection, slug: target } : { path: target },
+          { screenshots: opts.screenshot ? [viewport] : [] },
+        );
+        if (opts.out) await writeText(opts.out, p.html);
+        const shot = p.screenshots[0]?.result;
+        if (opts.screenshot && shot) {
+          if (shot.ok) await writeFile(opts.screenshot, shot.png);
+          else
+            process.stderr.write(
+              `${pc.yellow("!")} screenshot unavailable: ${shot.reason}\n  ${shot.hint}\n`,
+            );
+        }
+        out({ route: p.route, audit: p.audit, html: opts.out ? undefined : p.html }, () => {
+          process.stdout.write(
+            `${pc.bold(p.route.path)} ${pc.dim(p.route.template)}  page score ${score(p.audit.score)}\n`,
+          );
+          for (const c of p.audit.failed)
+            process.stdout.write(
+              `  ${c.severity === "error" ? pc.red("✖") : c.severity === "warning" ? pc.yellow("!") : pc.dim("·")} ${c.message}\n`,
+            );
+          if (opts.out) process.stdout.write(`${pc.green("✔")} wrote ${opts.out}\n`);
+          else if (!opts.screenshot)
+            process.stdout.write(
+              pc.dim("(pass -o file.html to save the page, --screenshot file.png for an image)\n"),
+            );
+          if (opts.screenshot && shot?.ok)
+            process.stdout.write(`${pc.green("✔")} wrote ${opts.screenshot}\n`);
+        });
+      },
+    ),
   );
 
 // ---------------------------------------------------------------- build / doctor / guide

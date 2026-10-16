@@ -1,0 +1,6 @@
+{%- comment -%} The direct answer answer engines quote. Skipped when the body already opens with it (entry.answerIsLead). Rendered with: entry. {%- endcomment -%}
+{% if entry.aeo.answer and entry.answerIsLead == false %}
+<div class="answer" data-speakable>
+  <p>{{ entry.aeo.answer }}</p>
+</div>
+{% endif %}

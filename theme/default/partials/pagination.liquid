@@ -1,0 +1,8 @@
+{%- comment -%} Previous/next links for list pages. Rendered with: pagination. {%- endcomment -%}
+{% if pagination.totalPages > 1 %}
+<nav class="pagination" aria-label="Pagination">
+  {% if pagination.prevUrl %}<a rel="prev" href="{{ pagination.prevUrl }}">&larr; Newer</a>{% else %}<span></span>{% endif %}
+  <span>Page {{ pagination.page }} of {{ pagination.totalPages }}</span>
+  {% if pagination.nextUrl %}<a rel="next" href="{{ pagination.nextUrl }}">Older &rarr;</a>{% else %}<span></span>{% endif %}
+</nav>
+{% endif %}

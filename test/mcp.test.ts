@@ -168,6 +168,78 @@ describe("MCP server", () => {
     await close();
   });
 
+  it("manages templates and previews pages", async () => {
+    const { client, cms, close } = await connect();
+    await cms.updateConfig({ build: { html: { enabled: true } } });
+    const tools = (await client.listTools()).tools;
+    expect(tools.map((t) => t.name)).toEqual(
+      expect.arrayContaining([
+        "list_templates",
+        "get_template",
+        "update_template",
+        "preview_page",
+        "audit_pages",
+        "get_theme",
+        "update_theme",
+        "list_routes",
+      ]),
+    );
+    const preview = tools.find((t) => t.name === "preview_page")!;
+    expect((preview._meta as { ui?: { resourceUri?: string } })?.ui?.resourceUri).toBe(
+      "ui://agentcms/preview.html",
+    );
+    const resources = (await client.listResources()).resources.map((r) => r.uri);
+    expect(resources).toEqual(
+      expect.arrayContaining([
+        "ui://agentcms/preview.html",
+        "agentcms://theme",
+        "agentcms://template/pages/post.liquid",
+      ]),
+    );
+    const app = await client.readResource({ uri: "ui://agentcms/preview.html" });
+    expect(app.contents[0]?.mimeType).toBe("text/html;profile=mcp-app");
+    expect((app.contents[0] as { text: string }).text).toContain("window.__mcpApps");
+    const list = await client.callTool({ name: "list_templates", arguments: {} });
+    expect((list.structuredContent as { templates: unknown[] }).templates.length).toBeGreaterThan(
+      15,
+    );
+    const got = await client.callTool({
+      name: "get_template",
+      arguments: { path: "pages/post.liquid" },
+    });
+    expect((got.structuredContent as { source: string }).source).toContain("entry.html | raw");
+    const bad = await client.callTool({
+      name: "update_template",
+      arguments: { path: "layouts/base.liquid", source: "<html></html>" },
+    });
+    expect((bad.structuredContent as { ok: boolean }).ok).toBe(false);
+    const routes = await client.callTool({ name: "list_routes", arguments: {} });
+    expect((routes.structuredContent as { total: number }).total).toBeGreaterThan(3);
+    const pv = await client.callTool({
+      name: "preview_page",
+      arguments: { collection: "posts", slug: "what-is-an-agent-first-cms", screenshots: "none" },
+    });
+    expect(pv.isError).toBeFalsy();
+    const sc = pv.structuredContent as {
+      html: string;
+      audit: { score: number };
+      route: { path: string };
+    };
+    expect(sc.route.path).toBe("/blog/what-is-an-agent-first-cms/");
+    expect(sc.html).toContain("<style data-inlined=");
+    expect(sc.audit.score).toBeGreaterThan(80);
+    const theme = await client.callTool({
+      name: "update_theme",
+      arguments: { patch: { colors: { accent: "#123456" } } },
+    });
+    expect(
+      (theme.structuredContent as { theme: { colors: { accent: string } } }).theme.colors.accent,
+    ).toBe("#123456");
+    const pages = await client.callTool({ name: "audit_pages", arguments: {} });
+    expect((pages.structuredContent as { total: number }).total).toBeGreaterThan(3);
+    await close();
+  });
+
   it("guards destructive actions and reports errors as tool errors", async () => {
     const { client, close } = await connect();
     const d = await client.callTool({

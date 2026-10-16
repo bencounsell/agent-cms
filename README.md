@@ -16,7 +16,9 @@ you ──▶ agent ──▶ agentcms (MCP / CLI / HTTP) ──▶ content/*.md
 - **Proactive.** `get_briefing` opens every session with drafts, stale posts, thin metadata, broken links, new competitor pages and an ordered list of next actions expressed as tool calls. Mutations return next actions too.
 - **Competitor research.** Crawls competitor blogs politely (robots.txt, sitemaps, one request at a time), records titles, headings, dates, depth, FAQ and structured-data usage, diffs each run, and turns it into topic gaps and ranked opportunities.
 - **Content suggestions.** New topics from gaps, questions competitors answer that you do not, series for thin clusters, refreshes, expansions, internal links. With a model available, each idea comes with an outline.
-- **Static output only.** `build_site` writes a JSON content API, RSS/Atom/JSON feeds, `sitemap.xml`, `llms.txt` and `llms-full.txt`, a MiniSearch index, `taxonomy.json` and a suggested `robots.txt`. Any site generator consumes them.
+- **Renders the site, from templates the agent manages.** Liquid templates plus `theme.json` tokens, with a bundled default theme so a new project is a complete site on its first build. Agents read, edit, validate, preview and audit templates through the same tool surface as content; the CMS generates the whole SEO head block so a restyle can never drop structured data. See [docs/TEMPLATES.md](docs/TEMPLATES.md).
+- **Previews inside the chat.** `preview_page` returns a self-contained HTML document, desktop and mobile screenshots (headless Chromium), and an MCP Apps view that hosts such as Claude render inline, so the agent can look at the page before telling you it is done.
+- **Static output only.** `build_site` writes the pages and hashed assets, a JSON content API, RSS/Atom/JSON feeds, `sitemap.xml`, `llms.txt` and `llms-full.txt`, a MiniSearch index, `taxonomy.json` and a suggested `robots.txt`. Turn page rendering off and any site generator can consume the JSON instead.
 - **Three surfaces, one core.** MCP (stdio and Streamable HTTP), a CLI, and an HTTP API with an OpenAPI 3.1 document.
 
 ## Install
@@ -44,7 +46,7 @@ cd agent-cms && pnpm install && pnpm build && pnpm link --global
    agentcms init --name "My Site" --url https://mysite.com --description "What the site is about" --author "Your Name" --client claude-code
    ```
 
-   This writes `agentcms.config.json`, `content/{posts,pages,authors}/` with sample entries, `AGENTS.md` (so any agent knows the project uses agentcms), a `.gitignore` entry for the cache, and the MCP config for your client (`.mcp.json` for Claude Code).
+   This writes `agentcms.config.json`, `content/{posts,pages,authors}/` with sample entries, `templates/` and `theme.json` (the default theme, ready to customise), `AGENTS.md` (so any agent knows the project uses agentcms), a `.gitignore` entry for the cache, and the MCP config for your client (`.mcp.json` for Claude Code).
 
 2. **Connect your agent.** Claude Code picks up `.mcp.json` automatically. For other clients see [docs/INSTALL.md](docs/INSTALL.md) or run `agentcms install <client>`.
 
@@ -65,24 +67,24 @@ cd agent-cms && pnpm install && pnpm build && pnpm link --global
    agentcms audit hello
    agentcms research add https://competitor.com/blog && agentcms research refresh && agentcms research compare
    agentcms build
+   agentcms preview /blog/hello/ --screenshot hello.png
    ```
 
-5. **Consume the output.** After `agentcms build`, `public/cms/` holds everything your site needs:
+5. **Deploy the output.** After `agentcms build`, `dist/` is a complete static site:
 
    ```
-   public/cms/
-   ├── site.json                      # site info, collections, taxonomy
-   ├── content/posts/index.json       # list with metadata
-   ├── content/posts/<slug>.json      # frontmatter + html + text + toc + jsonld
-   ├── taxonomy.json
+   dist/
+   ├── index.html · blog/<slug>/index.html · blog/page/2/ · tags/ · categories/ · authors/ · 404.html
+   ├── assets/styles.<hash>.css · search.<hash>.js
+   ├── sitemap.xml · robots.txt · llms.txt · llms-full.txt
    ├── feeds/rss.xml · atom.xml · feed.json
-   ├── sitemap.xml
-   ├── llms.txt · llms-full.txt       # answer-engine index (llmstxt.org)
-   ├── search-index.json              # MiniSearch, load client-side
-   └── robots.txt                     # suggested, includes AI crawler rules
+   └── cms/                           # JSON content API
+       ├── site.json · taxonomy.json · search-index.json
+       ├── content/posts/index.json   # list with metadata
+       └── content/posts/<slug>.json  # frontmatter + html + text + toc + jsonld
    ```
 
-   For example, in Astro: `const posts = (await import("../../public/cms/content/posts/index.json")).entries;`
+   Serve `dist/` from any static host, or run `agentcms serve` to view it locally. Prefer your own site generator? Set `build.html.enabled` to `false`, point `build.outDir` at its `public/` folder, and read the JSON under `cms/`. In Astro: `const posts = (await import("../../public/cms/content/posts/index.json")).entries;`
 
 ## How an agent works with it
 
@@ -97,10 +99,12 @@ The MCP server ships **instructions** that tell the agent the workflow: start wi
 | `audit_content` · `improve_content` · `validate_content` | Analyse |
 | `suggest_content` | Ideas with evidence |
 | `add_competitor` · `list_competitors` · `research_competitors` · `compare_competitors` · `remove_competitor` | Research |
+| `list_templates` · `get_template` · `update_template` · `create_template` · `delete_template` · `reset_template` | Managed templates (validated, with diffs) |
+| `get_theme` · `update_theme` · `list_routes` · `preview_page` · `audit_pages` | Theme tokens, routes, in-chat previews with screenshots, rendered-page audits |
 | `build_site` · `get_config` · `update_config` | Output and configuration |
 
-Resources: `agentcms://guide`, `agentcms://config`, `agentcms://briefing`, `agentcms://content/{collection}/{slug}`, `agentcms://schema/{collection}`.
-Prompts: `write_post`, `improve_post`, `seo_audit`, `aeo_optimize`, `competitor_brief`, `content_calendar`.
+Resources: `agentcms://guide`, `agentcms://config`, `agentcms://briefing`, `agentcms://content/{collection}/{slug}`, `agentcms://schema/{collection}`, `agentcms://template/{path}`, `agentcms://theme`, `agentcms://preview/{collection}/{slug}`, and the MCP Apps view `ui://agentcms/preview.html`.
+Prompts: `write_post`, `improve_post`, `seo_audit`, `aeo_optimize`, `competitor_brief`, `content_calendar`, `restyle_site`, `add_section`, `fix_page_audit`.
 
 ## AI modes
 
@@ -119,6 +123,7 @@ Prompts: `write_post`, `improve_post`, `seo_audit`, `aeo_optimize`, `competitor_
 - [Install and connect clients](docs/INSTALL.md)
 - [Agent guide](docs/AGENT-GUIDE.md) (what the agent is told)
 - [Content model and configuration](docs/CONTENT-MODEL.md)
+- [Templates, theme and previews](docs/TEMPLATES.md)
 - [SEO and AEO checks](docs/SEO-AEO.md)
 - [HTTP API](docs/API.md)
 - [Implementation plan](docs/PLAN.md)

@@ -344,6 +344,9 @@ manifest.json                          # build info and content hashes
 ## 9. Follow-ups
 
 - Publish to npm as `agentcms` and point `$schema` URLs at the released schema.
+- Verify the MCP Apps preview inside Claude Desktop and VS Code and tune the view (size notifications, theme following the host).
+- Migrate to the MCP TypeScript SDK v2 packages (`@modelcontextprotocol/server`) once the Apps SDK 2.x is the only maintained line.
+- Image handling for templates: responsive sizes and an `image` filter.
 - Example site under `examples/` that consumes `public/cms/` with Astro.
 - Web search for SERP checks (Anthropic `web_search` server tool) when the Anthropic provider is active.
 - Elicitation (MCP) for publish/delete confirmations on clients that support it.
@@ -470,12 +473,12 @@ a short comment stating what it renders and which variables it uses.
 
 | Step | Status |
 | --- | --- |
-| Config and output layout change, data path, html toggle | |
-| Default theme (templates, assets, theme.json) | |
-| Renderer, context builder, head generator, page builder, assets | |
-| Template and theme stores with validation, diff, reset | |
-| Rendered-page audit | |
-| Previews: HTML, screenshots, MCP Apps resource | |
-| MCP tools, resources, prompts; guide and instructions | |
-| CLI and API surface, static serving | |
-| Tests and docs | |
+| Config and output layout change, data path, html toggle | done |
+| Default theme (templates, assets, theme.json) | done |
+| Renderer, context builder, head generator, page builder, assets | done |
+| Template and theme stores with validation, diff, reset | done |
+| Rendered-page audit | done |
+| Previews: HTML, screenshots, MCP Apps resource | done (MCP Apps view uses the 1.7 Apps SDK, compatible with MCP SDK 1.x; live-host rendering not verified in this session) |
+| MCP tools, resources, prompts; guide and instructions | done |
+| CLI and API surface, static serving | done |
+| Tests and docs | done |

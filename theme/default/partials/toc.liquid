@@ -1,0 +1,7 @@
+{%- comment -%} Table of contents from H2/H3 headings. Rendered with: entry. {%- endcomment -%}
+{% if entry.toc.size > 1 %}
+<nav class="toc" aria-labelledby="toc-title">
+  <h2 id="toc-title">On this page</h2>
+  <ol>{% for item in entry.toc %}<li class="toc__depth-{{ item.depth }}"><a href="#{{ item.id }}">{{ item.text }}</a></li>{% endfor %}</ol>
+</nav>
+{% endif %}

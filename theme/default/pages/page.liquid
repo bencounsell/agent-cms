@@ -1,0 +1,9 @@
+{%- comment -%} A standalone page. Variables: entry, site, theme. {%- endcomment -%}
+{% layout "layouts/base" %}
+{% block content %}
+<article class="page">
+  <h1>{{ entry.title }}</h1>
+  {% if entry.image %}<img class="post__image" src="{{ entry.image }}" alt="{{ entry.imageAlt | default: '' }}">{% endif %}
+  <div class="prose">{{ entry.html | raw }}</div>
+</article>
+{% endblock %}

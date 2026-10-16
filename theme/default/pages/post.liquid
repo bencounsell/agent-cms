@@ -1,0 +1,32 @@
+{%- comment -%}
+  A post (also used for docs and custom collections unless pages/<collection>.liquid exists).
+  Variables: entry (frontmatter + html, text, toc, readingTime, wordCount), author, related, site, theme.
+{%- endcomment -%}
+{% layout "layouts/base" %}
+{% block content %}
+<article class="post">
+  <header class="post__header">
+    <p class="meta">
+      {% if entry.publishedAt %}<time datetime="{{ entry.publishedAt }}">{{ entry.publishedAt | date: "%-d %B %Y" }}</time>{% endif %}
+      {% if entry.updatedAt and entry.updatedAt != entry.publishedAt %} · Updated <time datetime="{{ entry.updatedAt }}">{{ entry.updatedAt | date: "%-d %B %Y" }}</time>{% endif %}
+      {% if entry.category %} · <a href="{{ entry.categoryUrl }}">{{ entry.category }}</a>{% endif %}
+      {% if entry.readingTime %} · {{ entry.readingTime }} min read{% endif %}
+    </p>
+    <h1>{{ entry.title }}</h1>
+    {% if entry.description and entry.answerIsLead == false %}<p class="lede">{{ entry.description }}</p>{% endif %}
+    {% if entry.image %}<img class="post__image" src="{{ entry.image }}" alt="{{ entry.imageAlt | default: '' }}">{% endif %}
+  </header>
+  {% if theme.features.answerBox %}{% render "partials/answer", entry: entry %}{% endif %}
+  {% if theme.features.takeaways %}{% render "partials/takeaways", entry: entry %}{% endif %}
+  <div class="post__layout">
+    {% if theme.features.toc %}{% render "partials/toc", entry: entry %}{% endif %}
+    <div class="prose">
+      {{ entry.html | raw }}
+    </div>
+  </div>
+  {% if theme.features.faq %}{% render "partials/faq", entry: entry %}{% endif %}
+  {% if entry.tags.size > 0 %}<p class="tags">{% for tag in entry.tagLinks %}<a class="tag" href="{{ tag.url }}">#{{ tag.name }}</a> {% endfor %}</p>{% endif %}
+  {% if theme.features.authorCard %}{% render "partials/author-card", author: author %}{% endif %}
+  {% if theme.features.related %}{% render "partials/related", related: related %}{% endif %}
+</article>
+{% endblock %}

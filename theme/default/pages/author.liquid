@@ -1,0 +1,17 @@
+{%- comment -%} An author profile with their entries. Variables: entry (the author), entries (their posts), site. {%- endcomment -%}
+{% layout "layouts/base" %}
+{% block content %}
+<article class="author">
+  <header class="author__header">
+    {% if entry.image %}<img src="{{ entry.image }}" alt="{{ entry.imageAlt | default: entry.title }}" width="96" height="96">{% endif %}
+    <h1>{{ entry.title }}</h1>
+  </header>
+  <div class="prose">{{ entry.html | raw }}</div>
+  {% if entries.size > 0 %}
+  <section aria-labelledby="by-author">
+    <h2 id="by-author">Written by {{ entry.title }}</h2>
+    <div class="cards">{% for item in entries %}{% render "partials/post-card", entry: item %}{% endfor %}</div>
+  </section>
+  {% endif %}
+</article>
+{% endblock %}

@@ -5,6 +5,7 @@ import { type AuditResult, auditEntry } from "./analysis/audit.ts";
 import { type DuplicateReport, findDuplicates } from "./analysis/duplicates.ts";
 import { KeywordIndex } from "./analysis/keywords.ts";
 import { buildLinkGraph, entryKey, type LinkGraph } from "./analysis/links.ts";
+import { auditPage, type PageAuditResult, withPageChecks } from "./analysis/page-audit.ts";
 import { type BuildManifest, buildSite } from "./build/index.ts";
 import {
   CACHE_DIRNAME,
@@ -41,6 +42,13 @@ import {
   enrichEntry,
 } from "./metadata/index.ts";
 import {
+  makeSelfContained,
+  type ScreenshotResult,
+  screenshotHtml,
+  VIEWPORTS,
+  type ViewportName,
+} from "./preview/index.ts";
+import {
   type ComparisonReport,
   type CompetitorRecord,
   compareCompetitors,
@@ -48,9 +56,22 @@ import {
   ResearchStore,
   type SiteSnapshot,
 } from "./research/index.ts";
+import {
+  buildSiteModel,
+  collectAssets,
+  type PlannedRoute,
+  planRoutes,
+  type Route,
+  renderRoute,
+  routeSummary,
+  type SiteModel,
+  TemplateStore,
+  ThemeStore,
+} from "./templates/index.ts";
 import { nowIso } from "./util/dates.ts";
 import { CmsError } from "./util/errors.ts";
 import { readJsonIfExists, sha256, writeJson } from "./util/fs.ts";
+import { log } from "./util/log.ts";
 import { uniq } from "./util/text.ts";
 
 export interface CmsOptions {
@@ -98,6 +119,7 @@ export class Cms {
   config: CmsConfig;
   readonly store: ContentStore;
   readonly research: ResearchStore;
+  readonly theme: ThemeStore;
   ai: AiResolution;
   private readonly opts: CmsOptions;
   private readonly analysisCache = new Map<string, MarkdownAnalysis>();
@@ -109,6 +131,7 @@ export class Cms {
     this.opts = opts;
     this.store = new ContentStore(root, config);
     this.research = new ResearchStore(this.cacheDir);
+    this.theme = new ThemeStore(root);
     this.ai = resolveAi({
       config: config.ai,
       sampling: opts.sampling,
@@ -411,7 +434,15 @@ export class Cms {
   async audit(collection: string, slug: string): Promise<AuditResult> {
     const entry = await this.store.get(collection, slug);
     const corpus = await this.corpus();
-    return this.auditWithCorpus(entry, corpus);
+    const base = this.auditWithCorpus(entry, corpus);
+    if (!this.config.build.html.enabled || entry.frontmatter.status === "archived") return base;
+    try {
+      const rendered = await this.renderEntry(entry, corpus);
+      return rendered ? withPageChecks(base, rendered.audit) : base;
+    } catch (err) {
+      log.warn("page audit skipped:", err);
+      return base;
+    }
   }
 
   private auditWithCorpus(entry: Entry, corpus: CorpusContext): AuditResult {
@@ -604,16 +635,156 @@ export class Cms {
 
   // ------------------------------------------------------------------ build
 
-  async build(opts: { outDir?: string; includeDrafts?: boolean } = {}): Promise<BuildManifest> {
+  async build(
+    opts: { outDir?: string; includeDrafts?: boolean } = {},
+  ): Promise<BuildManifest & { pages: number }> {
     const corpus = await this.corpus();
-    return buildSite({
+    let pageCount = 0;
+    const extra = this.config.build.html.enabled
+      ? async (write: (rel: string, content: string | Buffer) => Promise<void>) => {
+          const model = await this.siteModel(corpus, opts.includeDrafts);
+          const { files, map } = await collectAssets(
+            this.templates.dir,
+            this.config.build.html.assetsPath,
+          );
+          for (const f of files) await write(f.rel, f.content);
+          const engine = this.templates.engine();
+          for (const route of await planRoutes(model, this.templates.roots)) {
+            await write(route.file, await renderRoute(engine, model, route, map));
+            pageCount++;
+          }
+        }
+      : undefined;
+    const manifest = await buildSite({
       root: this.root,
       config: this.config,
       entries: corpus.entries,
       analyses: corpus.analyses,
       outDir: opts.outDir,
       includeDrafts: opts.includeDrafts,
+      extra,
     });
+    return { ...manifest, pages: pageCount };
+  }
+
+  // ------------------------------------------------------------------ templates & pages
+
+  get templates(): TemplateStore {
+    return new TemplateStore(this.root, this.config);
+  }
+
+  async siteModel(corpus?: CorpusContext, includeDrafts?: boolean): Promise<SiteModel> {
+    const c = corpus ?? (await this.corpus());
+    return buildSiteModel({
+      config: this.config,
+      entries: c.entries,
+      analyses: c.analyses,
+      theme: await this.theme.resolve(),
+      includeDrafts,
+    });
+  }
+
+  async routes(opts: { includeDrafts?: boolean } = {}): Promise<Route[]> {
+    const model = await this.siteModel(undefined, opts.includeDrafts);
+    return (await planRoutes(model, this.templates.roots)).map(routeSummary);
+  }
+
+  private async renderPlanned(
+    model: SiteModel,
+    route: PlannedRoute,
+    knownPaths: Set<string>,
+  ): Promise<{
+    html: string;
+    audit: PageAuditResult;
+    assets: Awaited<ReturnType<typeof collectAssets>>;
+  }> {
+    const assets = await collectAssets(this.templates.dir, this.config.build.html.assetsPath);
+    const html = await renderRoute(this.templates.engine(), model, route, assets.map);
+    const ctx = route.context();
+    const audit = auditPage({
+      html,
+      path: route.path,
+      url: ctx.page.url,
+      expected: {
+        title: ctx.head.title,
+        description: ctx.head.description,
+        canonical: ctx.head.canonical ?? ctx.page.url,
+        noindex: ctx.head.noindex,
+      },
+      knownPaths,
+      assetPrefixes: [
+        `${this.config.build.html.assetsPath.replace(/\/+$/, "")}/`,
+        `/${this.config.build.dataPath.replace(/^\/+|\/+$/g, "")}/`,
+        "/feeds/",
+      ],
+    });
+    return { html, audit, assets };
+  }
+
+  private async renderEntry(
+    entry: Entry,
+    corpus: CorpusContext,
+  ): Promise<{ html: string; audit: PageAuditResult } | undefined> {
+    const model = await this.siteModel(corpus, true);
+    const routes = await planRoutes(model, this.templates.roots);
+    const route = routes.find(
+      (r) => r.entry?.collection === entry.collection && r.entry.slug === entry.slug,
+    );
+    if (!route) return undefined;
+    const known = new Set(routes.map((r) => r.path));
+    const { html, audit } = await this.renderPlanned(model, route, known);
+    return { html, audit };
+  }
+
+  /** Render one route (by path, or by entry) without writing anything. */
+  async preview(
+    target: { path?: string; collection?: string; slug?: string },
+    opts: { screenshots?: ViewportName[]; selfContained?: boolean } = {},
+  ): Promise<{
+    route: Route;
+    html: string;
+    audit: PageAuditResult;
+    screenshots: { viewport: ViewportName; result: ScreenshotResult }[];
+  }> {
+    const model = await this.siteModel(undefined, true);
+    const routes = await planRoutes(model, this.templates.roots);
+    const route = target.path
+      ? routes.find(
+          (r) => r.path === target.path || r.path === `${target.path!.replace(/\/+$/, "")}/`,
+        )
+      : routes.find(
+          (r) => r.entry?.collection === target.collection && r.entry?.slug === target.slug,
+        );
+    if (!route)
+      throw new CmsError(
+        "NOT_FOUND",
+        `No page for ${target.path ?? `${target.collection}/${target.slug}`}. Call list_routes to see what the site renders.`,
+      );
+    const known = new Set(routes.map((r) => r.path));
+    const { html, audit, assets } = await this.renderPlanned(model, route, known);
+    const document =
+      opts.selfContained === false
+        ? html
+        : makeSelfContained(html, {
+            siteUrl: this.config.site.url,
+            assets: assets.files,
+            assetMap: assets.map,
+          });
+    const screenshots: { viewport: ViewportName; result: ScreenshotResult }[] = [];
+    for (const viewport of opts.screenshots ?? []) {
+      screenshots.push({ viewport, result: await screenshotHtml(document, VIEWPORTS[viewport]) });
+    }
+    return { route: routeSummary(route), html: document, audit, screenshots };
+  }
+
+  /** Audit every rendered route. */
+  async auditPages(opts: { includeDrafts?: boolean } = {}): Promise<PageAuditResult[]> {
+    const model = await this.siteModel(undefined, opts.includeDrafts);
+    const routes = await planRoutes(model, this.templates.roots);
+    const known = new Set(routes.map((r) => r.path));
+    const out: PageAuditResult[] = [];
+    for (const route of routes) out.push((await this.renderPlanned(model, route, known)).audit);
+    return out.sort((a, b) => a.score - b.score);
   }
 
   // ------------------------------------------------------------------ helpers

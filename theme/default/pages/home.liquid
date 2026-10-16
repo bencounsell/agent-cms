@@ -1,0 +1,15 @@
+{%- comment -%} Home page. Variables: site, entries (latest posts), collection (the posts collection), page. {%- endcomment -%}
+{% layout "layouts/base" %}
+{% block content %}
+<section class="hero">
+  <h1>{{ site.name }}</h1>
+  {% if site.description != "" %}<p class="lede">{{ site.description }}</p>{% endif %}
+</section>
+<section class="latest" aria-labelledby="latest-title">
+  <h2 id="latest-title">Latest</h2>
+  <div class="cards">
+    {% for entry in entries %}{% render "partials/post-card", entry: entry %}{% endfor %}
+  </div>
+  {% if collection %}<p><a class="more" href="{{ collection.url }}">All {{ collection.label | downcase }} &rarr;</a></p>{% endif %}
+</section>
+{% endblock %}

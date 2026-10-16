@@ -1,0 +1,10 @@
+{%- comment -%} Index of all tags or all categories. Variables: term.kind ("tag" or "category"), terms ([{name, url, count}]), site. {%- endcomment -%}
+{% layout "layouts/base" %}
+{% block content %}
+<section class="listing">
+  <h1>{% if term.kind == "tag" %}Tags{% else %}Categories{% endif %}</h1>
+  <ul class="term-list">
+    {% for item in terms %}<li><a href="{{ item.url }}">{{ item.name }}</a> <span class="muted">({{ item.count }})</span></li>{% endfor %}
+  </ul>
+</section>
+{% endblock %}

@@ -1,0 +1,12 @@
+{%- comment -%} Not found page, written to /404.html. Variables: site, entries (latest posts). {%- endcomment -%}
+{% layout "layouts/base" %}
+{% block content %}
+<section class="not-found">
+  <h1>Page not found</h1>
+  <p>The page you were looking for does not exist. Try the <a href="/">home page</a>{% if theme.features.search %} or the search box above{% endif %}.</p>
+  {% if entries.size > 0 %}
+  <h2>Recent posts</h2>
+  <ul>{% for entry in entries %}<li><a href="{{ entry.path }}">{{ entry.title }}</a></li>{% endfor %}</ul>
+  {% endif %}
+</section>
+{% endblock %}

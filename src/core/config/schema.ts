@@ -162,10 +162,26 @@ export const SeoConfigSchema = z.object({
   minAuditScoreToPublish: z.number().int().min(0).max(100).default(60),
 });
 
+export const HtmlConfigSchema = z.object({
+  /** Render full HTML pages from templates. Turn off to use agentcms headlessly. */
+  enabled: z.boolean().default(true),
+  /** Project templates directory; files missing here fall back to the bundled default theme. */
+  templatesDir: z.string().default("templates"),
+  /** Entries per list page. */
+  pageSize: z.number().int().min(1).max(200).default(10),
+  /** URL path for hashed theme assets. */
+  assetsPath: z.string().default("/assets"),
+  tagsPath: z.string().default("/tags"),
+  categoriesPath: z.string().default("/categories"),
+  /** Navigation items rendered by the theme; defaults to the listable collections. */
+  nav: z.array(z.object({ label: z.string(), url: z.string() })).optional(),
+});
+
 export const BuildConfigSchema = z.object({
-  outDir: z.string().default("public/cms"),
-  /** URL path where outDir is served from, used for absolute links inside llms.txt and feeds. */
-  publicPath: z.string().default("/cms"),
+  /** Site root. Pages, assets, sitemap, robots, llms.txt and feeds are written here. */
+  outDir: z.string().default("dist"),
+  /** Sub-directory of outDir for the JSON content API, taxonomy and search index. */
+  dataPath: z.string().default("cms"),
   feeds: z.boolean().default(true),
   feedLimit: z.number().int().min(1).default(20),
   sitemap: z.boolean().default(true),
@@ -173,6 +189,7 @@ export const BuildConfigSchema = z.object({
   searchIndex: z.boolean().default(true),
   robots: z.boolean().default(true),
   includeDrafts: z.boolean().default(false),
+  html: HtmlConfigSchema.prefault({}),
 });
 
 export const CmsConfigSchema = z.object({
@@ -245,6 +262,7 @@ export function defaultConfig(input: {
 export type AiConfig = z.infer<typeof AiConfigSchema>;
 export type SeoConfig = z.infer<typeof SeoConfigSchema>;
 export type BuildConfig = z.infer<typeof BuildConfigSchema>;
+export type HtmlConfig = z.infer<typeof HtmlConfigSchema>;
 export type ResearchConfig = z.infer<typeof ResearchConfigSchema>;
 export type TaxonomyConfig = z.infer<typeof TaxonomyConfigSchema>;
 export type SiteConfig = z.infer<typeof SiteConfigSchema>;

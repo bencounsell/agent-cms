@@ -1,5 +1,7 @@
 import { randomUUID } from "node:crypto";
+import path from "node:path";
 import { getConnInfo } from "@hono/node-server/conninfo";
+import { serveStatic } from "@hono/node-server/serve-static";
 import { createRoute, OpenAPIHono, z } from "@hono/zod-openapi";
 import { WebStandardStreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js";
 import type { Context } from "hono";
@@ -15,6 +17,8 @@ export interface ApiOptions {
   token?: string;
   /** Require the token even for loopback clients (AGENTCMS_REQUIRE_TOKEN=1). */
   requireToken?: boolean;
+  /** Serve the built site (build.outDir) at / so previews can be opened in a browser. Default true. */
+  serveSite?: boolean;
 }
 
 const statusFor: Record<CmsErrorCode, number> = {
@@ -661,6 +665,146 @@ export function createApp(cms: Cms, opts: ApiOptions = {}): OpenAPIHono {
     async (c) => c.json({ config: await cms.updateConfig(c.req.valid("json")) }, 200),
   );
 
+  // ------------------------------------------------------------------ templates, theme, pages
+  app.openapi(
+    createRoute({
+      method: "get",
+      path: "/v1/templates",
+      tags: ["templates"],
+      summary: "List templates",
+      request: { query: z.object({ path: z.string().optional() }) },
+      responses: { 200: json(Loose) },
+    }),
+    async (c) => {
+      const { path: rel } = c.req.valid("query");
+      const model = await cms.siteModel(undefined, true);
+      if (rel) return c.json(await cms.templates.get(rel, model), 200);
+      return c.json(
+        { templatesDir: cms.templates.dir, templates: await cms.templates.list(model) },
+        200,
+      );
+    },
+  );
+  app.openapi(
+    createRoute({
+      method: "put",
+      path: "/v1/templates",
+      tags: ["templates"],
+      summary: "Create or update a template (validated)",
+      request: {
+        body: {
+          content: {
+            "application/json": { schema: z.object({ path: z.string(), source: z.string() }) },
+          },
+        },
+      },
+      responses: { 200: json(Loose), 400: json(Loose, "Validation failed") },
+    }),
+    async (c) => {
+      const { path: rel, source } = c.req.valid("json");
+      const r = await cms.templates.write(rel, source, await cms.siteModel(undefined, true));
+      return c.json(r, r.ok ? 200 : 400);
+    },
+  );
+  app.openapi(
+    createRoute({
+      method: "delete",
+      path: "/v1/templates",
+      tags: ["templates"],
+      summary: "Delete a project template",
+      request: { query: z.object({ path: z.string() }) },
+      responses: { 200: json(Loose) },
+    }),
+    async (c) => c.json(await cms.templates.remove(c.req.valid("query").path), 200),
+  );
+  app.openapi(
+    createRoute({
+      method: "post",
+      path: "/v1/templates/reset",
+      tags: ["templates"],
+      summary: "Reset a template to the default",
+      request: {
+        body: { content: { "application/json": { schema: z.object({ path: z.string() }) } } },
+      },
+      responses: { 200: json(Loose) },
+    }),
+    async (c) => c.json(await cms.templates.reset(c.req.valid("json").path), 200),
+  );
+  app.openapi(
+    createRoute({
+      method: "get",
+      path: "/v1/theme",
+      tags: ["templates"],
+      summary: "Theme tokens",
+      responses: { 200: json(Loose) },
+    }),
+    async (c) => c.json({ theme: await cms.theme.resolve() }, 200),
+  );
+  app.openapi(
+    createRoute({
+      method: "patch",
+      path: "/v1/theme",
+      tags: ["templates"],
+      summary: "Update theme tokens",
+      request: { body: { content: { "application/json": { schema: Loose } } } },
+      responses: { 200: json(Loose) },
+    }),
+    async (c) => c.json({ theme: await cms.theme.update(c.req.valid("json")) }, 200),
+  );
+  app.openapi(
+    createRoute({
+      method: "get",
+      path: "/v1/routes",
+      tags: ["templates"],
+      summary: "Pages the site renders",
+      request: { query: z.object({ drafts: z.enum(["true", "false"]).optional() }) },
+      responses: { 200: json(z.object({ routes: z.array(Loose) })) },
+    }),
+    async (c) =>
+      c.json(
+        { routes: await cms.routes({ includeDrafts: c.req.valid("query").drafts === "true" }) },
+        200,
+      ),
+  );
+  app.openapi(
+    createRoute({
+      method: "get",
+      path: "/v1/pages/audit",
+      tags: ["templates"],
+      summary: "Audit every rendered page",
+      responses: { 200: json(z.object({ results: z.array(Loose) })) },
+    }),
+    async (c) => c.json({ results: await cms.auditPages() }, 200),
+  );
+  app.openapi(
+    createRoute({
+      method: "get",
+      path: "/v1/preview",
+      tags: ["templates"],
+      summary: "Render one page (HTML by default, JSON with audit when format=json)",
+      request: {
+        query: z.object({
+          path: z.string().optional(),
+          collection: z.string().optional(),
+          slug: z.string().optional(),
+          format: z.enum(["html", "json"]).optional(),
+        }),
+      },
+      responses: {
+        200: {
+          description: "Rendered page",
+          content: { "text/html": { schema: z.string() }, "application/json": { schema: Loose } },
+        },
+      },
+    }),
+    async (c) => {
+      const { path: p, collection, slug, format } = c.req.valid("query");
+      const r = await cms.preview({ path: p, collection, slug });
+      if (format === "json") return c.json({ route: r.route, audit: r.audit, html: r.html }, 200);
+      return c.html(r.html, 200);
+    },
+  );
+
   // ------------------------------------------------------------------ MCP over Streamable HTTP (stateful sessions)
   const sessions = new Map<string, WebStandardStreamableHTTPServerTransport>();
   app.all("/mcp", async (c) => {
@@ -695,6 +839,15 @@ export function createApp(cms: Cms, opts: ApiOptions = {}): OpenAPIHono {
     }
     return transport.handleRequest(c.req.raw);
   });
+
+  // ------------------------------------------------------------------ the built site, served at /
+  if (opts.serveSite ?? true) {
+    const siteRoot = path.resolve(cms.root, cms.config.build.outDir);
+    app.use(
+      "/*",
+      serveStatic({ root: path.relative(process.cwd(), siteRoot) || ".", index: "index.html" }),
+    );
+  }
 
   return app;
 }

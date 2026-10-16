@@ -1,0 +1,10 @@
+{%- comment -%} A collection index, paginated. Variables: collection, entries, pagination, site. {%- endcomment -%}
+{% layout "layouts/base" %}
+{% block content %}
+<section class="listing">
+  <h1>{{ collection.label }}</h1>
+  {% if collection.description %}<p class="lede">{{ collection.description }}</p>{% endif %}
+  <div class="cards">{% for entry in entries %}{% render "partials/post-card", entry: entry %}{% endfor %}</div>
+  {% render "partials/pagination", pagination: pagination %}
+</section>
+{% endblock %}

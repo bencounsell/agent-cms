@@ -19,6 +19,7 @@ export async function makeProject(
     description: "A test site about agent-first content tooling.",
   });
   config.ai.provider = "deterministic";
+  config.build.html.enabled = false;
   config.taxonomy.categories = [
     { name: "Engineering", keywords: ["mcp", "api", "typescript"] },
     { name: "Marketing", keywords: ["seo", "content strategy"] },

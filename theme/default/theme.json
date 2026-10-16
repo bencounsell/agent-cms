@@ -1,0 +1,44 @@
+{
+  "name": "default",
+  "colors": {
+    "background": "#ffffff",
+    "surface": "#f6f7f9",
+    "text": "#1b1f24",
+    "muted": "#5c6572",
+    "border": "#e2e6ea",
+    "accent": "#2457d6",
+    "accentText": "#ffffff"
+  },
+  "dark": {
+    "background": "#0f1216",
+    "surface": "#171b21",
+    "text": "#e8ebef",
+    "muted": "#9aa4b1",
+    "border": "#2a313a",
+    "accent": "#7aa2ff",
+    "accentText": "#0f1216"
+  },
+  "fonts": {
+    "body": "system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif",
+    "heading": "inherit",
+    "mono": "ui-monospace, SFMono-Regular, Menlo, Consolas, monospace"
+  },
+  "layout": {
+    "maxWidth": "72rem",
+    "proseWidth": "44rem",
+    "radius": "0.5rem"
+  },
+  "features": {
+    "darkMode": true,
+    "toc": true,
+    "answerBox": true,
+    "takeaways": true,
+    "faq": true,
+    "authorCard": true,
+    "related": true,
+    "search": true
+  },
+  "footer": {
+    "text": ""
+  }
+}

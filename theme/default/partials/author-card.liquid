@@ -1,0 +1,10 @@
+{%- comment -%} Author byline card. Rendered with: author (null when the entry has no author entry). {%- endcomment -%}
+{% if author %}
+<aside class="author-card">
+  {% if author.image %}<img src="{{ author.image }}" alt="{{ author.imageAlt | default: author.title }}" width="64" height="64">{% endif %}
+  <div>
+    <p class="author-card__name"><a href="{{ author.path }}">{{ author.title }}</a></p>
+    {% if author.description %}<p>{{ author.description }}</p>{% endif %}
+  </div>
+</aside>
+{% endif %}

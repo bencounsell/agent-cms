@@ -55,6 +55,18 @@ draft -> review -> published -> archived. `set_status` sets publishedAt on first
 
 description, excerpt, category, tags, keywords, social, aeo, schema, related, readingTime. The collection's `metadata.auto` policy decides which run automatically. `force: true` overwrites human-written values; by default only empty or previously generated fields change.
 
+## Presentation: templates and theme
+
+The site is rendered by agentcms from Liquid templates (`templates/layouts`, `templates/pages`, `templates/partials`, `templates/assets`) and `theme.json`. A bundled default theme fills in any file the project does not have, so deleting a template is always safe.
+
+- Tokens first: `get_theme` / `update_theme` change colours, dark palette, fonts, widths and feature flags without touching templates.
+- `list_templates` shows every template, where it lives and which routes it renders; `get_template` returns the source, the variables it receives and a sample context from a real page.
+- `update_template` / `create_template` validate before writing (syntax, unknown variables, `{{ head | raw }}` in layouts, a trial render) and return a diff plus the page audit. `reset_template` restores the default.
+- Every output is HTML-escaped; use `| raw` only for `entry.html` and `head`.
+- `preview_page` renders a route with screenshots (desktop/mobile) and the page audit; look at the screenshot before reporting. `audit_pages` checks every route.
+- The CMS generates the whole SEO head block. Templates place it with `{{ head | raw }}` and never hand-write meta tags or JSON-LD.
+- Keep content out of templates, keep header/nav/main/footer landmarks, exactly one H1, alt attributes on images.
+
 ## Competitor research
 
 `add_competitor` registers a site. `research_competitors` discovers its sitemap, fetches recent pages politely (robots.txt, one request at a time) and records titles, headings, word counts, dates, structured data and FAQ usage. `compare_competitors` turns that into topic gaps, cadence, depth and structure comparisons with evidence. Snapshots live in `.agentcms/research/`; each refresh records which pages are new.

@@ -26,7 +26,13 @@ Errors are `{ "error": { "code", "message", "details?" } }` with `400` validatio
 | `GET /v1/competitors` · `POST /v1/competitors { url, name?, notes? }` · `DELETE /v1/competitors/{host}` | Track competitors |
 | `POST /v1/competitors/{host}/refresh` · `POST /v1/competitors/refresh { onlyStale? }` | Crawl |
 | `GET /v1/competitors/compare` | Gap analysis |
-| `POST /v1/build { outDir?, includeDrafts? }` | Static build |
+| `GET /v1/templates[?path=]` · `PUT /v1/templates { path, source }` · `DELETE /v1/templates?path=` · `POST /v1/templates/reset { path }` | Managed templates (PUT validates; 400 with errors when rejected) |
+| `GET /v1/theme` · `PATCH /v1/theme` | Theme tokens |
+| `GET /v1/routes?drafts=true` | Pages the site renders |
+| `GET /v1/preview?path=/blog/x/` (or `collection&slug`; `format=json` adds the audit) | Rendered page |
+| `GET /v1/pages/audit` | Rendered-page audit of every route |
+| `GET /*` | The built site (`build.outDir`) when it exists |
+| `POST /v1/build { outDir?, includeDrafts? }` | Static build (pages, assets and data) |
 | `GET /v1/config` · `PATCH /v1/config` | Configuration (deep merge; `null` deletes a key) |
 | `ALL /mcp` | MCP Streamable HTTP endpoint (stateful sessions via `mcp-session-id`) |
 

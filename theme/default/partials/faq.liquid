@@ -1,0 +1,12 @@
+{%- comment -%} FAQ as collapsible details; the matching FAQPage JSON-LD is in the head. Rendered with: entry. {%- endcomment -%}
+{% if entry.aeo.faq.size > 0 %}
+<section class="faq" aria-labelledby="faq-title">
+  <h2 id="faq-title">Frequently asked questions</h2>
+  {% for item in entry.aeo.faq %}
+  <details{% if forloop.first %} open{% endif %}>
+    <summary>{{ item.question }}</summary>
+    <p>{{ item.answer }}</p>
+  </details>
+  {% endfor %}
+</section>
+{% endif %}

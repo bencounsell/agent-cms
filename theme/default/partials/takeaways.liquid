@@ -1,0 +1,7 @@
+{%- comment -%} Key takeaways list. Rendered with: entry. {%- endcomment -%}
+{% if entry.aeo.keyTakeaways.size > 0 %}
+<aside class="takeaways" aria-labelledby="takeaways-title">
+  <h2 id="takeaways-title">Key takeaways</h2>
+  <ul>{% for item in entry.aeo.keyTakeaways %}<li>{{ item }}</li>{% endfor %}</ul>
+</aside>
+{% endif %}
